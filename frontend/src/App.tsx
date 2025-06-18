@@ -1,35 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+import React, { useState } from "react";
+import axios from "axios";
+import { MathJax, MathJaxContext } from "better-react-mathjax";
+import "./App.css";
+
+const config = {
+  loader: { load: ["input/asciimath", "input/tex"] },
+};
+
+const App: React.FC = () => {
+  const [latex, setLatex] = useState("\\int_0^1 x^2 dx");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const calcularIntegral = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.post("http://localhost:8000/calcular", { latex });
+      setResult(res.data.resultado);
+    } catch (error) {
+      setResult("Error consultando el backend");
+    }
+    setLoading(false);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <MathJaxContext config={config}>
+      <div className="container">
+        <h1>Calculadora de Integrales</h1>
+        <div>
+          <label>Expresión en LaTeX:</label>
+          <input
+            type="text"
+            value={latex}
+            onChange={(e) => setLatex(e.target.value)}
+            className="input"
+          />
+          <button onClick={calcularIntegral} disabled={loading}>
+            {loading ? "Calculando..." : "Calcular"}
+          </button>
+        </div>
+        <div>
+          <strong>Vista previa:</strong>
+          <div className="preview">
+            <MathJax dynamic inline>{`\\(${latex}\\)`}</MathJax>
+          </div>
+        </div>
+        <div>
+          <strong>Resultado:</strong>
+          <div className="preview">
+            <MathJax dynamic inline>{result ? `\\(${result}\\)` : ""}</MathJax>
+          </div>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    </MathJaxContext>
+  );
+};
 
-export default App
+export default App;

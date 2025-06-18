@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, Union
 import sympy as sp
 
-from calculo.integrales import calcular_integral
+from app.calculo.integrales import calcular_integral
 
 app = FastAPI(
     title="API de Cálculo Integral (Método de Simpson, límites variables)",
