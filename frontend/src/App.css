@@ -1,42 +1,140 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+html, body, #root {
+  height: 100%;
+  min-height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  position: relative;
+  min-height: 100vh;
+  background: #121212;
+  background-image: url('https://thumbs.dreamstime.com/b/modelo-incons%C3%BAtil-de-la-matem%C3%A1ticas-del-vector-con-las-figuras-los-c%C3%A1lculos-y-f%C3%B3rmulas-matem%C3%A1ticos-%E2%80%98manuscrito-en-el-papel-144609844.jpg?w=768');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center center;
+  font-family: 'Montserrat', 'Roboto Slab', Arial, sans-serif;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+body::before {
+  content: "";
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(0, 31, 63, 0.23);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(60px) scale(0.98);
   }
-  to {
-    transform: rotate(360deg);
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-.card {
-  padding: 2em;
+.app-center {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;    /* Centrado vertical */
+  justify-content: center;
+  padding: 40px 0;
+  box-sizing: border-box;
 }
 
-.read-the-docs {
-  color: #888;
+.app-paper {
+  background: rgba(105, 50, 50, 0.85);
+  border-radius: 30px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+  z-index: 1;
+  max-width: 700px;   /* Más grande */
+  width: 100%;
+  padding: 40px 32px 36px 32px;
+  animation: fadeInUp 1s cubic-bezier(.23,1.25,.32,1);
+  transition: box-shadow 0.4s cubic-bezier(.4,0,.2,1), transform 0.4s cubic-bezier(.4,0,.2,1);
+}
+
+.resultado-animado {
+  animation: fadeInUp 0.8s cubic-bezier(.23,1.25,.32,1);
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.col {
+  flex: 1 1 0;
+}
+
+h4, .MuiTypography-h4 {
+  color: #262f31 !important;
+  text-shadow: 1px 1px 0 #bde0fe;
+}
+
+button.nuevo {
+  margin-top: 22px;
+  background: linear-gradient(90deg,#198754 0%,#43e97b 100%);
+  color: white;
+  font-weight: bold;
+  border-radius: 15px;
+  padding: 10px 28px;
+  border: none;
+  font-size: 1.13rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px 0 rgba(31,38,135,0.12);
+  transition: background 0.2s, transform 0.2s;
+  letter-spacing: 0.01em;
+  animation: bounceIn 0.7s;
+}
+
+button.nuevo:hover {
+  background: linear-gradient(90deg,#43e97b 0%,#198754 100%);
+  transform: scale(1.09);
+}
+
+.MuiButton-contained {
+  font-family: 'Montserrat', 'Roboto Slab', Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-size: 1.09rem;
+  border-radius: 13px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+input, .MuiInputBase-input, .MuiFormLabel-root, .MuiTypography-root {
+  font-family: 'Montserrat', 'Roboto Slab', Arial, sans-serif !important;
+  font-size: 1.08rem;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  background: rgba(111, 43, 43, 0.04);
+}
+::-webkit-scrollbar-thumb {
+  background: #43967d;
+  border-radius: 8px;
 }
