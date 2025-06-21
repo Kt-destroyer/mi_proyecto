@@ -18,8 +18,15 @@ sympy_func_dict = {
 }
 
 def _asegura_escalar(expr):
-    # Si expr es un vector/matriz de sympy, extrae el primer elemento escalar
-    if isinstance(expr, (sp.ImmutableDenseNDimArray, sp.MatrixBase, sp.NDimArray)):
+    # Si expr es matriz/vector de sympy, convierte a lista y extrae escalar recursivamente
+    if hasattr(expr, 'is_Matrix') and expr.is_Matrix:
+        expr = expr.tolist()
+    if hasattr(expr, 'is_Vector') and expr.is_Vector:
+        expr = expr.tolist()
+    if isinstance(expr, (sp.ImmutableDenseNDimArray, sp.NDimArray)):
+        expr = expr.tolist()
+    # Extrae recursivamente el primer elemento de listas/tuplas no vacías
+    while isinstance(expr, (list, tuple)) and len(expr) > 0:
         expr = expr[0]
     return expr
 
