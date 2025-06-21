@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sympy import symbols, lambdify, sympify, integrate
 import sympy
+import math
 
 from app.calculo.integrales import calcular_integral
 from app.calculo.graficas import generar_grafica  # Corrige si tu ruta es diferente
@@ -79,6 +80,11 @@ def integral_simple(req: SimpleIntegralRequest):
             locals=sympy_func_dict
         )
         result = float(integrate(expr, (x, req.limite_inf, req.limite_sup)).evalf())
+        # --- FIX: no permitir infinito, -infinito o NaN ---
+        if not math.isfinite(result):
+            return JSONResponse(status_code=400, content={
+                "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
+            })
     except Exception as e:
         print("Error en el cálculo:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {e}"})
@@ -113,13 +119,20 @@ def integral_doble(req: DobleIntegralRequest):
             print("Error en el cálculo doble:", resultado["error"])
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {resultado['error']}"})
 
+        # --- FIX: no permitir infinito, -infinito o NaN ---
+        valor = resultado.get("valor", None)
+        if valor is not None and not math.isfinite(valor):
+            return JSONResponse(status_code=400, content={
+                "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
+            })
+
         try:
             img_path = generar_grafica("doble", corregir_funciones(req.expresion), limites)
         except Exception as e:
             print("Error al graficar doble:", e)
             return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 2D): {e}"})
 
-        return {"resultado": resultado["valor"], "grafica": img_path}
+        return {"resultado": valor, "grafica": img_path}
     except Exception as e:
         print("Error inesperado en el endpoint doble:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
@@ -146,13 +159,20 @@ def integral_triple(req: TripleIntegralRequest):
             print("Error en el cálculo triple:", resultado["error"])
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {resultado['error']}"})
 
+        # --- FIX: no permitir infinito, -infinito o NaN ---
+        valor = resultado.get("valor", None)
+        if valor is not None and not math.isfinite(valor):
+            return JSONResponse(status_code=400, content={
+                "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
+            })
+
         try:
             img_path = generar_grafica("triple", corregir_funciones(req.expresion), limites)
         except Exception as e:
             print("Error al graficar triple:", e)
             return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 3D): {e}"})
 
-        return {"resultado": resultado["valor"], "grafica": img_path}
+        return {"resultado": valor, "grafica": img_path}
     except Exception as e:
         print("Error inesperado en el endpoint triple:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
