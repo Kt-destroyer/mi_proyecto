@@ -2,7 +2,13 @@ import io
 import os
 import re
 import numpy as np
+
+# ---- MATPLOTLIB SERVER FIX ----
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+# ---- FIN FIX ----
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,7 +17,7 @@ from sympy import symbols, lambdify, sympify, integrate
 import sympy
 
 from app.calculo.integrales import calcular_integral
-from app.calculo.graficas import generar_grafica
+from app.calculo.graficas import generar_grafica  # Corrige si tu ruta es diferente
 
 app = FastAPI()
 
@@ -31,6 +37,13 @@ def corregir_funciones(expr: str) -> str:
     for f in funciones:
         expr = re.sub(rf"{f}\s+\(", f + "(", expr)
     return expr
+
+# Diccionario global para sympify/lambdify con trigonométricas extendidas
+sympy_func_dict = {
+    "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
+    "log": sympy.log, "exp": sympy.exp, "sqrt": sympy.sqrt,
+    "sec": sympy.sec, "csc": sympy.csc, "cot": sympy.cot
+}
 
 class SimpleIntegralRequest(BaseModel):
     expresion: str
@@ -61,7 +74,10 @@ def integral_simple(req: SimpleIntegralRequest):
             return JSONResponse(status_code=400, content={"detail": "Los límites superior e inferior de integración son iguales."})
         if req.limite_inf > req.limite_sup:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior es mayor que el superior. Por favor invierte los límites."})
-        expr = sympify(corregir_funciones(req.expresion), locals={"sin": sympy.sin, "cos": sympy.cos, "exp": sympy.exp, "log": sympy.log})
+        expr = sympify(
+            corregir_funciones(req.expresion),
+            locals=sympy_func_dict
+        )
         result = float(integrate(expr, (x, req.limite_inf, req.limite_sup)).evalf())
     except Exception as e:
         return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {e}"})
@@ -94,7 +110,10 @@ def integral_doble(req: DobleIntegralRequest):
         if "error" in resultado:
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {resultado['error']}"})
 
-        img_path = generar_grafica("doble", corregir_funciones(req.expresion), limites)
+        try:
+            img_path = generar_grafica("doble", corregir_funciones(req.expresion), limites)
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 2D): {e}"})
 
         return {"resultado": resultado["valor"], "grafica": img_path}
     except Exception as e:
@@ -121,7 +140,10 @@ def integral_triple(req: TripleIntegralRequest):
         if "error" in resultado:
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {resultado['error']}"})
 
-        img_path = generar_grafica("triple", corregir_funciones(req.expresion), limites)
+        try:
+            img_path = generar_grafica("triple", corregir_funciones(req.expresion), limites)
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 3D): {e}"})
 
         return {"resultado": resultado["valor"], "grafica": img_path}
     except Exception as e:
