@@ -80,6 +80,7 @@ def integral_simple(req: SimpleIntegralRequest):
         )
         result = float(integrate(expr, (x, req.limite_inf, req.limite_sup)).evalf())
     except Exception as e:
+        print("Error en el cálculo:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {e}"})
     try:
         limites = {
@@ -88,6 +89,7 @@ def integral_simple(req: SimpleIntegralRequest):
         }
         img_path = generar_grafica("simple", corregir_funciones(req.expresion), limites)
     except Exception as e:
+        print("Error al graficar:", e)
         return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar: {e}"})
     return {"resultado": result, "grafica": img_path}
 
@@ -108,15 +110,18 @@ def integral_doble(req: DobleIntegralRequest):
         }
         resultado = calcular_integral("doble", corregir_funciones(req.expresion), limites)
         if "error" in resultado:
+            print("Error en el cálculo doble:", resultado["error"])
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {resultado['error']}"})
 
         try:
             img_path = generar_grafica("doble", corregir_funciones(req.expresion), limites)
         except Exception as e:
+            print("Error al graficar doble:", e)
             return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 2D): {e}"})
 
         return {"resultado": resultado["valor"], "grafica": img_path}
     except Exception as e:
+        print("Error inesperado en el endpoint doble:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
 
 @app.post("/triple")
@@ -138,15 +143,18 @@ def integral_triple(req: TripleIntegralRequest):
         }
         resultado = calcular_integral("triple", corregir_funciones(req.expresion), limites)
         if "error" in resultado:
+            print("Error en el cálculo triple:", resultado["error"])
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión: {resultado['error']}"})
 
         try:
             img_path = generar_grafica("triple", corregir_funciones(req.expresion), limites)
         except Exception as e:
+            print("Error al graficar triple:", e)
             return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 3D): {e}"})
 
         return {"resultado": resultado["valor"], "grafica": img_path}
     except Exception as e:
+        print("Error inesperado en el endpoint triple:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
 
 from fastapi.staticfiles import StaticFiles

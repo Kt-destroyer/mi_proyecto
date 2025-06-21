@@ -17,6 +17,12 @@ sympy_func_dict = {
     "sec": sp.sec, "csc": sp.csc, "cot": sp.cot
 }
 
+def _asegura_escalar(expr):
+    # Si expr es un vector/matriz de sympy, extrae el primer elemento escalar
+    if isinstance(expr, (sp.ImmutableDenseNDimArray, sp.MatrixBase, sp.NDimArray)):
+        expr = expr[0]
+    return expr
+
 def generar_grafica(tipo: str, expresion: str, limites: dict):
     """
     Genera gráficas para integrales y las guarda en ./static/graficas/
@@ -28,6 +34,7 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
 
     if tipo == "simple":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
+        expr = _asegura_escalar(expr)
         f = sp.lambdify(x, expr, modules=[sympy_func_dict, "numpy"])
         x_vals = np.linspace(limites["a"], limites["b"], 500)
         y_vals = f(x_vals)
@@ -47,6 +54,7 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
 
     elif tipo == "doble":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
+        expr = _asegura_escalar(expr)
         fxy = sp.lambdify((x, y), expr, modules=[sympy_func_dict, "numpy"])
         x_inf = limites["a"]
         x_sup = limites["b"]
