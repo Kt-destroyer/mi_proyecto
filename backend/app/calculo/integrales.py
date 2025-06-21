@@ -1,6 +1,13 @@
 import sympy as sp
 import numpy as np
 
+# Diccionario de funciones para sympify/lambdify (incluye sec, csc, cot)
+sympy_func_dict = {
+    "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
+    "log": sp.log, "exp": sp.exp, "sqrt": sp.sqrt,
+    "sec": sp.sec, "csc": sp.csc, "cot": sp.cot
+}
+
 def simpson_simple(f, a, b, n=1000):
     if n % 2:
         n += 1
@@ -15,12 +22,15 @@ def simpson_doble_variable(f, x_inf, x_sup, y_inf_func, y_sup_func, nx=50, ny=50
     if ny % 2: ny += 1
     x_vals = np.linspace(x_inf, x_sup, nx+1)
     hx = (x_sup - x_inf) / nx
-    S = 0.0
+    S_total = 0.0
     for i, xi in enumerate(x_vals):
         y_inf = y_inf_func(xi)
         y_sup = y_sup_func(xi)
+        if y_sup <= y_inf:
+            continue  # Salta subintervalos nulos o con orden incorrecto
         y_vals = np.linspace(y_inf, y_sup, ny+1)
         hy = (y_sup - y_inf) / ny
+        S_y = 0.0
         for j, yj in enumerate(y_vals):
             coeff = 1
             if i == 0 or i == nx:
@@ -35,9 +45,10 @@ def simpson_doble_variable(f, x_inf, x_sup, y_inf_func, y_sup_func, nx=50, ny=50
                 coeff *= 4
             else:
                 coeff *= 2
-            S += coeff * f(xi, yj)
-        S *= hy / 3  # Simpson en y, para cada x
-    return S * hx / 3  # Simpson en x
+            S_y += coeff * f(xi, yj)
+        S_y *= hy / 3  # Simpson en y, para este x
+        S_total += S_y
+    return S_total * hx / 3  # Simpson en x
 
 def simpson_triple_variable(
     f, x_inf, x_sup,
@@ -50,17 +61,23 @@ def simpson_triple_variable(
     if nz % 2: nz += 1
     x_vals = np.linspace(x_inf, x_sup, nx+1)
     hx = (x_sup - x_inf) / nx
-    S = 0.0
+    S_total = 0.0
     for i, xi in enumerate(x_vals):
         y_inf = y_inf_func(xi)
         y_sup = y_sup_func(xi)
+        if y_sup <= y_inf:
+            continue  # Salta subintervalos nulos o invertidos para y
         y_vals = np.linspace(y_inf, y_sup, ny+1)
         hy = (y_sup - y_inf) / ny
+        S_y = 0.0
         for j, yj in enumerate(y_vals):
             z_inf = z_inf_func(xi, yj)
             z_sup = z_sup_func(xi, yj)
+            if z_sup <= z_inf:
+                continue  # Salta subintervalos nulos o invertidos para z
             z_vals = np.linspace(z_inf, z_sup, nz+1)
             hz = (z_sup - z_inf) / nz
+            S_z = 0.0
             for k, zk in enumerate(z_vals):
                 coeff = 1
                 if i == 0 or i == nx:
@@ -81,13 +98,14 @@ def simpson_triple_variable(
                     coeff *= 4
                 else:
                     coeff *= 2
-                S += coeff * f(xi, yj, zk)
-            S *= hz / 3
-        S *= hy / 3
-    return S * hx / 3
+                S_z += coeff * f(xi, yj, zk)
+            S_z *= hz / 3
+            S_y += S_z
+        S_y *= hy / 3
+        S_total += S_y
+    return S_total * hx / 3
 
 def _valida_resultado(result):
-    # True si es escalar finito o array finito
     if isinstance(result, (float, int, np.floating)):
         return np.isfinite(result)
     try:
@@ -102,25 +120,24 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
 
     try:
         if tipo == "simple":
-            expr = sp.sympify(expresion)
-            f = sp.lambdify(x, expr, modules=['numpy'])
+            expr = sp.sympify(expresion, locals=sympy_func_dict)
+            f = sp.lambdify(x, expr, modules=["numpy"])
             a, b = limites["a"], limites["b"]
             resultado = simpson_simple(f, a, b, n=1000)
 
         elif tipo == "doble":
-            expr = sp.sympify(expresion)
-            f = sp.lambdify((x, y), expr, modules=['numpy'])
+            expr = sp.sympify(expresion, locals=sympy_func_dict)
+            f = sp.lambdify((x, y), expr, modules=["numpy"])
 
             y_inf_expr = limites["c"]
             y_sup_expr = limites["d"]
 
-            # Permite funciones o constantes para los límites
             if isinstance(y_inf_expr, str):
-                y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr), modules=['numpy'])
+                y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules=["numpy"])
             else:
                 y_inf_func = lambda x: y_inf_expr
             if isinstance(y_sup_expr, str):
-                y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr), modules=['numpy'])
+                y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr, locals=sympy_func_dict), modules=["numpy"])
             else:
                 y_sup_func = lambda x: y_sup_expr
 
@@ -129,8 +146,8 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             )
 
         elif tipo == "triple":
-            expr = sp.sympify(expresion)
-            f = sp.lambdify((x, y, z), expr, modules=['numpy'])
+            expr = sp.sympify(expresion, locals=sympy_func_dict)
+            f = sp.lambdify((x, y, z), expr, modules=["numpy"])
 
             a, b = limites["a"], limites["b"]
             c_expr = limites["c"]
@@ -138,25 +155,23 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             e_expr = limites["e"]
             f_expr = limites["f"]
 
-            # y_inf, y_sup pueden ser funciones de x o constantes
             if isinstance(c_expr, str):
-                y_inf_func = sp.lambdify(x, sp.sympify(c_expr), modules=['numpy'])
+                y_inf_func = sp.lambdify(x, sp.sympify(c_expr, locals=sympy_func_dict), modules=["numpy"])
             else:
                 y_inf_func = lambda x: c_expr
 
             if isinstance(d_expr, str):
-                y_sup_func = sp.lambdify(x, sp.sympify(d_expr), modules=['numpy'])
+                y_sup_func = sp.lambdify(x, sp.sympify(d_expr, locals=sympy_func_dict), modules=["numpy"])
             else:
                 y_sup_func = lambda x: d_expr
 
-            # z_inf, z_sup pueden ser funciones de x, y o constantes
             if isinstance(e_expr, str):
-                z_inf_func = sp.lambdify([x, y], sp.sympify(e_expr), modules=['numpy'])
+                z_inf_func = sp.lambdify([x, y], sp.sympify(e_expr, locals=sympy_func_dict), modules=["numpy"])
             else:
                 z_inf_func = lambda x, y: e_expr
 
             if isinstance(f_expr, str):
-                z_sup_func = sp.lambdify([x, y], sp.sympify(f_expr), modules=['numpy'])
+                z_sup_func = sp.lambdify([x, y], sp.sympify(f_expr, locals=sympy_func_dict), modules=["numpy"])
             else:
                 z_sup_func = lambda x, y: f_expr
 
@@ -167,12 +182,11 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
         else:
             return {"error": f"Tipo de integral no soportada: {tipo}"}
 
-        # Validación anti-inf/nan (fix principal)
         if not _valida_resultado(resultado):
             return {"error": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."}
         return {
             "valor": float(resultado),
-            "grafica": ""  # la gráfica se maneja en main.py/graficas.py
+            "grafica": ""
         }
 
     except Exception as e:
