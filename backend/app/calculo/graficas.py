@@ -10,7 +10,6 @@ import sympy as sp
 import os
 from matplotlib import cm
 
-# Diccionario para sympify/lambdify con funciones trigonométricas extendidas
 sympy_func_dict = {
     "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
     "log": sp.log, "exp": sp.exp, "sqrt": sp.sqrt,
@@ -18,17 +17,14 @@ sympy_func_dict = {
 }
 
 def _asegura_escalar(expr):
-    # Si expr es matriz/vector de sympy, convierte a lista y extrae escalar recursivamente
     if hasattr(expr, 'is_Matrix') and expr.is_Matrix:
         expr = expr.tolist()
     if hasattr(expr, 'is_Vector') and expr.is_Vector:
         expr = expr.tolist()
     if isinstance(expr, (sp.ImmutableDenseNDimArray, sp.NDimArray)):
         expr = expr.tolist()
-    # Extrae recursivamente el primer elemento de listas/tuplas no vacías
     while isinstance(expr, (list, tuple)) and len(expr) > 0:
         expr = expr[0]
-    # Si sigue siendo sympy.Number, convíertelo a float si es posible
     if isinstance(expr, sp.Basic):
         try:
             expr = float(expr)
@@ -36,10 +32,11 @@ def _asegura_escalar(expr):
             pass
     return expr
 
+def _valida_arreglo_json(vals):
+    arr = np.asarray(vals)
+    return np.all(np.isfinite(arr))
+
 def generar_grafica(tipo: str, expresion: str, limites: dict):
-    """
-    Genera gráficas para integrales y las guarda en ./static/graficas/
-    """
     os.makedirs("static/graficas", exist_ok=True)
     ruta = f"static/graficas/integral_{tipo}_{hash(str(expresion)+str(limites))}.png"
     x, y, z = sp.symbols('x y z')
@@ -48,11 +45,11 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
     if tipo == "simple":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
         expr = _asegura_escalar(expr)
-        print("DEBUG expr type:", type(expr), "is_Matrix:", getattr(expr, 'is_Matrix', False), "is_Vector:", getattr(expr, 'is_Vector', False))
-        f = sp.lambdify(x, expr, modules="numpy")  # <--- SOLO numpy
+        f = sp.lambdify(x, expr, modules="numpy")
         x_vals = np.linspace(limites["a"], limites["b"], 500)
         y_vals = f(x_vals)
-        print("DEBUG y_vals type:", type(y_vals))
+        if not _valida_arreglo_json(y_vals):
+            raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
         if np.isscalar(y_vals):
             y_vals = np.full_like(x_vals, y_vals)
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -76,7 +73,6 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         y_inf_expr = limites["c"]
         y_sup_expr = limites["d"]
 
-        # Soporta funciones o constantes para los límites de y
         if isinstance(y_inf_expr, str):
             y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules="numpy")
         else:
@@ -95,22 +91,20 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         Xg = np.concatenate(Xg)
         Yg = np.concatenate(Yg)
         Zg = fxy(Xg, Yg)
+        if not _valida_arreglo_json(Zg):
+            raise ValueError("La función tiene valores infinitos o indefinidos en la región seleccionada. Cambia los límites.")
 
         fig = plt.figure(figsize=(10, 7))
         ax = fig.add_subplot(111, projection='3d')
         ax.plot_trisurf(Xg, Yg, Zg, alpha=0.6, cmap=cm.viridis, linewidth=0.1)
-        # Curvas de frontera en z=0
         Y1 = y_inf_func(X)
         Y2 = y_sup_func(X)
-        # --- FIX: Asegura que Y1 y Y2 sean arrays del mismo tamaño que X ---
         if np.isscalar(Y1):
             Y1 = np.full_like(X, Y1)
         if np.isscalar(Y2):
             Y2 = np.full_like(X, Y2)
-        # ---------------------------------------------------------------
         ax.plot(X, Y1, np.zeros_like(X), color='brown', linewidth=2, label="y_inf(x) en z=0")
         ax.plot(X, Y2, np.zeros_like(X), color='green', linewidth=2, label="y_sup(x) en z=0")
-        # Curvas sobre la superficie
         ax.plot(X, Y1, fxy(X, Y1), color='brown', linestyle='--', linewidth=2, label="y_inf(x) sobre f(x,y)")
         ax.plot(X, Y2, fxy(X, Y2), color='green', linestyle='--', linewidth=2, label="y_sup(x) sobre f(x,y)")
         ax.set_xlabel("x")
@@ -130,7 +124,6 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         z_inf_expr = limites["e"]
         z_sup_expr = limites["f"]
 
-        # Soporta funciones o constantes para los límites de y y z
         if isinstance(y_inf_expr, str):
             y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules="numpy")
         else:
@@ -154,17 +147,14 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         X = np.linspace(x_inf, x_sup, 15)
         Y_low = y_inf_func(X)
         Y_high = y_sup_func(X)
-        # --- FIX: Asegura que Y_low y Y_high sean arrays del mismo tamaño que X ---
         if np.isscalar(Y_low):
             Y_low = np.full_like(X, Y_low)
         if np.isscalar(Y_high):
             Y_high = np.full_like(X, Y_high)
-        # ---------------------------------------------------------------
 
         fig = plt.figure(figsize=(8, 7))
         ax = fig.add_subplot(111, projection='3d')
 
-        # Superficies laterales (bordes)
         for i in range(len(X)):
             y0 = Y_low[i]
             y1 = Y_high[i]
@@ -172,12 +162,13 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
             x_arr = np.full_like(y_arr, X[i])
             z_inf_arr = z_inf_func(X[i], y_arr)
             z_sup_arr = z_sup_func(X[i], y_arr)
+            if not _valida_arreglo_json(z_inf_arr) or not _valida_arreglo_json(z_sup_arr):
+                raise ValueError("La función tiene valores infinitos o indefinidos en la región seleccionada. Cambia los límites.")
             ax.plot(x_arr, y_arr, z_inf_arr, color='red', alpha=0.7, linewidth=1)
             ax.plot(x_arr, y_arr, z_sup_arr, color='blue', alpha=0.7, linewidth=1)
             ax.plot([X[i]]*2, [y0, y1], [z_inf_func(X[i], y0), z_inf_func(X[i], y1)], 'r--', alpha=0.5)
             ax.plot([X[i]]*2, [y0, y1], [z_sup_func(X[i], y0), z_sup_func(X[i], y1)], 'b--', alpha=0.5)
 
-        # Caras en y = y_inf(x), y = y_sup(x)
         Y = np.linspace(np.min(Y_low), np.max(Y_high), 15)
         for j in range(len(Y)):
             x_arr = np.linspace(x_inf, x_sup, 15)
@@ -185,6 +176,8 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
             try:
                 z_inf_arr = z_inf_func(x_arr, y_arr)
                 z_sup_arr = z_sup_func(x_arr, y_arr)
+                if not _valida_arreglo_json(z_inf_arr) or not _valida_arreglo_json(z_sup_arr):
+                    continue
                 ax.plot(x_arr, y_arr, z_inf_arr, color='green', alpha=0.5, linewidth=1)
                 ax.plot(x_arr, y_arr, z_sup_arr, color='purple', alpha=0.5, linewidth=1)
             except Exception:

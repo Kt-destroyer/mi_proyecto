@@ -86,6 +86,16 @@ def simpson_triple_variable(
         S *= hy / 3
     return S * hx / 3
 
+def _valida_resultado(result):
+    # True si es escalar finito o array finito
+    if isinstance(result, (float, int, np.floating)):
+        return np.isfinite(result)
+    try:
+        arr = np.asarray(result, dtype=float)
+        return np.all(np.isfinite(arr))
+    except Exception:
+        return False
+
 def calcular_integral(tipo: str, expresion: str, limites: dict):
     x, y, z = sp.symbols('x y z')
     resultado = None
@@ -157,6 +167,9 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
         else:
             return {"error": f"Tipo de integral no soportada: {tipo}"}
 
+        # Validación anti-inf/nan (fix principal)
+        if not _valida_resultado(resultado):
+            return {"error": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."}
         return {
             "valor": float(resultado),
             "grafica": ""  # la gráfica se maneja en main.py/graficas.py
