@@ -28,6 +28,12 @@ def _asegura_escalar(expr):
     # Extrae recursivamente el primer elemento de listas/tuplas no vacías
     while isinstance(expr, (list, tuple)) and len(expr) > 0:
         expr = expr[0]
+    # Si sigue siendo sympy.Number, convíertelo a float si es posible
+    if isinstance(expr, sp.Basic):
+        try:
+            expr = float(expr)
+        except Exception:
+            pass
     return expr
 
 def generar_grafica(tipo: str, expresion: str, limites: dict):
@@ -42,9 +48,11 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
     if tipo == "simple":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
         expr = _asegura_escalar(expr)
-        f = sp.lambdify(x, expr, modules=[sympy_func_dict, "numpy"])
+        print("DEBUG expr type:", type(expr), "is_Matrix:", getattr(expr, 'is_Matrix', False), "is_Vector:", getattr(expr, 'is_Vector', False))
+        f = sp.lambdify(x, expr, modules="numpy")  # <--- SOLO numpy
         x_vals = np.linspace(limites["a"], limites["b"], 500)
         y_vals = f(x_vals)
+        print("DEBUG y_vals type:", type(y_vals))
         if np.isscalar(y_vals):
             y_vals = np.full_like(x_vals, y_vals)
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -62,7 +70,7 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
     elif tipo == "doble":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
         expr = _asegura_escalar(expr)
-        fxy = sp.lambdify((x, y), expr, modules=[sympy_func_dict, "numpy"])
+        fxy = sp.lambdify((x, y), expr, modules="numpy")
         x_inf = limites["a"]
         x_sup = limites["b"]
         y_inf_expr = limites["c"]
@@ -70,11 +78,11 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
 
         # Soporta funciones o constantes para los límites de y
         if isinstance(y_inf_expr, str):
-            y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules=[sympy_func_dict, "numpy"])
+            y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules="numpy")
         else:
             y_inf_func = lambda x: y_inf_expr
         if isinstance(y_sup_expr, str):
-            y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr, locals=sympy_func_dict), modules=[sympy_func_dict, "numpy"])
+            y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr, locals=sympy_func_dict), modules="numpy")
         else:
             y_sup_func = lambda x: y_sup_expr
 
@@ -124,22 +132,22 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
 
         # Soporta funciones o constantes para los límites de y y z
         if isinstance(y_inf_expr, str):
-            y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules=[sympy_func_dict, "numpy"])
+            y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules="numpy")
         else:
             y_inf_func = lambda x: y_inf_expr
 
         if isinstance(y_sup_expr, str):
-            y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr, locals=sympy_func_dict), modules=[sympy_func_dict, "numpy"])
+            y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr, locals=sympy_func_dict), modules="numpy")
         else:
             y_sup_func = lambda x: y_sup_expr
 
         if isinstance(z_inf_expr, str):
-            z_inf_func = sp.lambdify([x, y], sp.sympify(z_inf_expr, locals=sympy_func_dict), modules=[sympy_func_dict, "numpy"])
+            z_inf_func = sp.lambdify([x, y], sp.sympify(z_inf_expr, locals=sympy_func_dict), modules="numpy")
         else:
             z_inf_func = lambda x, y: z_inf_expr
 
         if isinstance(z_sup_expr, str):
-            z_sup_func = sp.lambdify([x, y], sp.sympify(z_sup_expr, locals=sympy_func_dict), modules=[sympy_func_dict, "numpy"])
+            z_sup_func = sp.lambdify([x, y], sp.sympify(z_sup_expr, locals=sympy_func_dict), modules="numpy")
         else:
             z_sup_func = lambda x, y: z_sup_expr
 
