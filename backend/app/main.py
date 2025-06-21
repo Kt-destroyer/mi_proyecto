@@ -11,7 +11,7 @@ from sympy import symbols, lambdify, sympify, integrate
 import sympy
 
 from app.calculo.integrales import calcular_integral
-from app.graficas import generar_grafica # type: ignore
+from app.graficas import generar_grafica 
 
 app = FastAPI()
 
