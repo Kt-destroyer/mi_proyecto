@@ -87,10 +87,6 @@ def simpson_triple_variable(
     return S * hx / 3
 
 def calcular_integral(tipo: str, expresion: str, limites: dict):
-    """
-    Calcula integrales simples, dobles (con límites variables) o triples (con internos funcionales).
-    Retorna: {"valor": float, "grafica": "ruta/imagen.png"}
-    """
     x, y, z = sp.symbols('x y z')
     resultado = None
 
@@ -108,19 +104,13 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             y_inf_expr = limites["c"]
             y_sup_expr = limites["d"]
 
+            # Permite funciones o constantes para los límites
             if isinstance(y_inf_expr, str):
-                y_inf_parsed = sp.sympify(y_inf_expr)
-                y_inf_func = sp.lambdify(x, y_inf_parsed, modules=['numpy'])
-            elif isinstance(y_inf_expr, sp.Basic):
-                y_inf_func = sp.lambdify(x, y_inf_expr, modules=['numpy'])
+                y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr), modules=['numpy'])
             else:
                 y_inf_func = lambda x: y_inf_expr
-
             if isinstance(y_sup_expr, str):
-                y_sup_parsed = sp.sympify(y_sup_expr)
-                y_sup_func = sp.lambdify(x, y_sup_parsed, modules=['numpy'])
-            elif isinstance(y_sup_expr, sp.Basic):
-                y_sup_func = sp.lambdify(x, y_sup_expr, modules=['numpy'])
+                y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr), modules=['numpy'])
             else:
                 y_sup_func = lambda x: y_sup_expr
 
@@ -138,37 +128,25 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             e_expr = limites["e"]
             f_expr = limites["f"]
 
-            # y_inf, y_sup pueden ser funciones de x
+            # y_inf, y_sup pueden ser funciones de x o constantes
             if isinstance(c_expr, str):
-                y_inf_parsed = sp.sympify(c_expr)
-                y_inf_func = sp.lambdify(x, y_inf_parsed, modules=['numpy'])
-            elif isinstance(c_expr, sp.Basic):
-                y_inf_func = sp.lambdify(x, c_expr, modules=['numpy'])
+                y_inf_func = sp.lambdify(x, sp.sympify(c_expr), modules=['numpy'])
             else:
                 y_inf_func = lambda x: c_expr
 
             if isinstance(d_expr, str):
-                y_sup_parsed = sp.sympify(d_expr)
-                y_sup_func = sp.lambdify(x, y_sup_parsed, modules=['numpy'])
-            elif isinstance(d_expr, sp.Basic):
-                y_sup_func = sp.lambdify(x, d_expr, modules=['numpy'])
+                y_sup_func = sp.lambdify(x, sp.sympify(d_expr), modules=['numpy'])
             else:
                 y_sup_func = lambda x: d_expr
 
-            # z_inf, z_sup pueden ser funciones de x, y
+            # z_inf, z_sup pueden ser funciones de x, y o constantes
             if isinstance(e_expr, str):
-                z_inf_parsed = sp.sympify(e_expr)
-                z_inf_func = sp.lambdify([x, y], z_inf_parsed, modules=['numpy'])
-            elif isinstance(e_expr, sp.Basic):
-                z_inf_func = sp.lambdify([x, y], e_expr, modules=['numpy'])
+                z_inf_func = sp.lambdify([x, y], sp.sympify(e_expr), modules=['numpy'])
             else:
                 z_inf_func = lambda x, y: e_expr
 
             if isinstance(f_expr, str):
-                z_sup_parsed = sp.sympify(f_expr)
-                z_sup_func = sp.lambdify([x, y], z_sup_parsed, modules=['numpy'])
-            elif isinstance(f_expr, sp.Basic):
-                z_sup_func = sp.lambdify([x, y], f_expr, modules=['numpy'])
+                z_sup_func = sp.lambdify([x, y], sp.sympify(f_expr), modules=['numpy'])
             else:
                 z_sup_func = lambda x, y: f_expr
 
@@ -179,10 +157,9 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
         else:
             return {"error": f"Tipo de integral no soportada: {tipo}"}
 
-        # La gráfica se genera en main.py, así que retornamos solo el resultado aquí
         return {
             "valor": float(resultado),
-            "grafica": ""  # la gráfica se maneja en main.py
+            "grafica": ""  # la gráfica se maneja en main.py/graficas.py
         }
 
     except Exception as e:
