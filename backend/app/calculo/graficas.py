@@ -31,6 +31,8 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         f = sp.lambdify(x, expr, modules=[sympy_func_dict, "numpy"])
         x_vals = np.linspace(limites["a"], limites["b"], 500)
         y_vals = f(x_vals)
+        if np.isscalar(y_vals):
+            y_vals = np.full_like(x_vals, y_vals)
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(x_vals, y_vals, 'b-', linewidth=2)
         ax.fill_between(x_vals, y_vals, alpha=0.3)
