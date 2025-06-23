@@ -1,14 +1,10 @@
 import numpy as np
-
-# ---- MATPLOTLIB SERVER FIX ----
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-# ---- FIN FIX ----
-
 import sympy as sp
 import os
-from matplotlib import cm
+import json
+
+# --- Plotly import for interactive graphs ---
+import plotly.graph_objects as go
 
 sympy_func_dict = {
     "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
@@ -36,11 +32,14 @@ def _valida_arreglo_json(vals):
     arr = np.asarray(vals)
     return np.all(np.isfinite(arr))
 
-def generar_grafica(tipo: str, expresion: str, limites: dict):
+def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: bool = True):
+    """
+    Si modo_interactivo=True, retorna dict Plotly para frontend.
+    Si modo_interactivo=False, sigue generando PNG (matplotlib).
+    """
     os.makedirs("static/graficas", exist_ok=True)
     ruta = f"static/graficas/integral_{tipo}_{hash(str(expresion)+str(limites))}.png"
     x, y, z = sp.symbols('x y z')
-    plt.close('all')
 
     if tipo == "simple":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
@@ -50,19 +49,33 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         y_vals = f(x_vals)
         if not _valida_arreglo_json(y_vals):
             raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
-        if np.isscalar(y_vals):
-            y_vals = np.full_like(x_vals, y_vals)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(x_vals, y_vals, 'b-', linewidth=2)
-        ax.fill_between(x_vals, y_vals, alpha=0.3)
-        ax.set_title(f"Integral de ${sp.latex(expr)}$ entre {limites['a']} y {limites['b']}")
-        ax.set_xlabel("x")
-        ax.set_ylabel("f(x)")
-        ax.grid(True)
-        plt.tight_layout()
-        plt.savefig(ruta)
-        plt.close(fig)
-        return ruta
+
+        if modo_interactivo:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', fill='tozeroy', name="f(x)"))
+            fig.update_layout(
+                title=f"Integral de {sp.latex(expr)} entre {limites['a']} y {limites['b']}",
+                xaxis_title="x", yaxis_title="f(x)",
+                template="plotly_white"
+            )
+            return fig.to_dict()
+        else:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+            if np.isscalar(y_vals):
+                y_vals = np.full_like(x_vals, y_vals)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(x_vals, y_vals, 'b-', linewidth=2)
+            ax.fill_between(x_vals, y_vals, alpha=0.3)
+            ax.set_title(f"Integral de ${sp.latex(expr)}$ entre {limites['a']} y {limites['b']}")
+            ax.set_xlabel("x")
+            ax.set_ylabel("f(x)")
+            ax.grid(True)
+            plt.tight_layout()
+            plt.savefig(ruta)
+            plt.close(fig)
+            return ruta
 
     elif tipo == "doble":
         expr = sp.sympify(expresion, locals=sympy_func_dict)
@@ -94,27 +107,48 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         if not _valida_arreglo_json(Zg):
             raise ValueError("La función tiene valores infinitos o indefinidos en la región seleccionada. Cambia los límites.")
 
-        fig = plt.figure(figsize=(10, 7))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot_trisurf(Xg, Yg, Zg, alpha=0.6, cmap=cm.viridis, linewidth=0.1)
-        Y1 = y_inf_func(X)
-        Y2 = y_sup_func(X)
-        if np.isscalar(Y1):
-            Y1 = np.full_like(X, Y1)
-        if np.isscalar(Y2):
-            Y2 = np.full_like(X, Y2)
-        ax.plot(X, Y1, np.zeros_like(X), color='brown', linewidth=2, label="y_inf(x) en z=0")
-        ax.plot(X, Y2, np.zeros_like(X), color='green', linewidth=2, label="y_sup(x) en z=0")
-        ax.plot(X, Y1, fxy(X, Y1), color='brown', linestyle='--', linewidth=2, label="y_inf(x) sobre f(x,y)")
-        ax.plot(X, Y2, fxy(X, Y2), color='green', linestyle='--', linewidth=2, label="y_sup(x) sobre f(x,y)")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        ax.legend()
-        plt.tight_layout()
-        plt.savefig(ruta)
-        plt.close(fig)
-        return ruta
+        if modo_interactivo:
+            fig = go.Figure(data=[
+                go.Surface(
+                    x=Xg, y=Yg, z=Zg, colorscale='Viridis', opacity=0.7, showscale=True
+                )
+            ])
+            fig.update_layout(
+                title=f"Integral doble de {sp.latex(expr)}",
+                scene=dict(
+                    xaxis_title="x",
+                    yaxis_title="y",
+                    zaxis_title="f(x,y)"
+                ),
+                template="plotly_white"
+            )
+            return fig.to_dict()
+        else:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+            from matplotlib import cm
+            fig = plt.figure(figsize=(10, 7))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot_trisurf(Xg, Yg, Zg, alpha=0.6, cmap=cm.viridis, linewidth=0.1)
+            Y1 = y_inf_func(X)
+            Y2 = y_sup_func(X)
+            if np.isscalar(Y1):
+                Y1 = np.full_like(X, Y1)
+            if np.isscalar(Y2):
+                Y2 = np.full_like(X, Y2)
+            ax.plot(X, Y1, np.zeros_like(X), color='brown', linewidth=2, label="y_inf(x) en z=0")
+            ax.plot(X, Y2, np.zeros_like(X), color='green', linewidth=2, label="y_sup(x) en z=0")
+            ax.plot(X, Y1, fxy(X, Y1), color='brown', linestyle='--', linewidth=2, label="y_inf(x) sobre f(x,y)")
+            ax.plot(X, Y2, fxy(X, Y2), color='green', linestyle='--', linewidth=2, label="y_sup(x) sobre f(x,y)")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            ax.legend()
+            plt.tight_layout()
+            plt.savefig(ruta)
+            plt.close(fig)
+            return ruta
 
     elif tipo == "triple":
         x_inf = limites["a"]
@@ -152,46 +186,63 @@ def generar_grafica(tipo: str, expresion: str, limites: dict):
         if np.isscalar(Y_high):
             Y_high = np.full_like(X, Y_high)
 
-        fig = plt.figure(figsize=(8, 7))
-        ax = fig.add_subplot(111, projection='3d')
-
+        # El volumen como malla de puntos (borde)
+        puntos_x, puntos_y, puntos_z = [], [], []
         for i in range(len(X)):
             y0 = Y_low[i]
             y1 = Y_high[i]
-            y_arr = np.linspace(y0, y1, 15)
+            y_arr = np.linspace(y0, y1, 10)
             x_arr = np.full_like(y_arr, X[i])
             z_inf_arr = z_inf_func(X[i], y_arr)
             z_sup_arr = z_sup_func(X[i], y_arr)
-            if not _valida_arreglo_json(z_inf_arr) or not _valida_arreglo_json(z_sup_arr):
-                raise ValueError("La función tiene valores infinitos o indefinidos en la región seleccionada. Cambia los límites.")
-            ax.plot(x_arr, y_arr, z_inf_arr, color='red', alpha=0.7, linewidth=1)
-            ax.plot(x_arr, y_arr, z_sup_arr, color='blue', alpha=0.7, linewidth=1)
-            ax.plot([X[i]]*2, [y0, y1], [z_inf_func(X[i], y0), z_inf_func(X[i], y1)], 'r--', alpha=0.5)
-            ax.plot([X[i]]*2, [y0, y1], [z_sup_func(X[i], y0), z_sup_func(X[i], y1)], 'b--', alpha=0.5)
+            puntos_x.extend(x_arr)
+            puntos_y.extend(y_arr)
+            puntos_z.extend(z_inf_arr)
+            puntos_x.extend(x_arr)
+            puntos_y.extend(y_arr)
+            puntos_z.extend(z_sup_arr)
 
-        Y = np.linspace(np.min(Y_low), np.max(Y_high), 15)
-        for j in range(len(Y)):
-            x_arr = np.linspace(x_inf, x_sup, 15)
-            y_arr = np.full_like(x_arr, Y[j])
-            try:
-                z_inf_arr = z_inf_func(x_arr, y_arr)
-                z_sup_arr = z_sup_func(x_arr, y_arr)
-                if not _valida_arreglo_json(z_inf_arr) or not _valida_arreglo_json(z_sup_arr):
-                    continue
-                ax.plot(x_arr, y_arr, z_inf_arr, color='green', alpha=0.5, linewidth=1)
-                ax.plot(x_arr, y_arr, z_sup_arr, color='purple', alpha=0.5, linewidth=1)
-            except Exception:
-                continue
-
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        ax.set_title("Región de integración triple (bordes)")
-        ax.view_init(elev=25, azim=45)
-        plt.tight_layout()
-        plt.savefig(ruta)
-        plt.close(fig)
-        return ruta
+        if modo_interactivo:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter3d(x=puntos_x, y=puntos_y, z=puntos_z,
+                                       mode='lines', line=dict(width=2, color='blue'), name="Borde región"))
+            fig.update_layout(
+                title="Región de integración triple (bordes)",
+                scene=dict(
+                    xaxis_title="x",
+                    yaxis_title="y",
+                    zaxis_title="z"
+                ),
+                template="plotly_white"
+            )
+            return fig.to_dict()
+        else:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+            from matplotlib import cm
+            fig = plt.figure(figsize=(8, 7))
+            ax = fig.add_subplot(111, projection='3d')
+            for i in range(len(X)):
+                y0 = Y_low[i]
+                y1 = Y_high[i]
+                y_arr = np.linspace(y0, y1, 15)
+                x_arr = np.full_like(y_arr, X[i])
+                z_inf_arr = z_inf_func(X[i], y_arr)
+                z_sup_arr = z_sup_func(X[i], y_arr)
+                ax.plot(x_arr, y_arr, z_inf_arr, color='red', alpha=0.7, linewidth=1)
+                ax.plot(x_arr, y_arr, z_sup_arr, color='blue', alpha=0.7, linewidth=1)
+                ax.plot([X[i]]*2, [y0, y1], [z_inf_func(X[i], y0), z_inf_func(X[i], y1)], 'r--', alpha=0.5)
+                ax.plot([X[i]]*2, [y0, y1], [z_sup_func(X[i], y0), z_sup_func(X[i], y1)], 'b--', alpha=0.5)
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            ax.set_title("Región de integración triple (bordes)")
+            ax.view_init(elev=25, azim=45)
+            plt.tight_layout()
+            plt.savefig(ruta)
+            plt.close(fig)
+            return ruta
 
     else:
         return ""

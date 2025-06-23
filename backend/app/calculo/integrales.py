@@ -1,12 +1,33 @@
 import sympy as sp
 import numpy as np
 
+from sympy.parsing.sympy_parser import (
+    parse_expr, standard_transformations, implicit_multiplication_application,
+    convert_xor
+)
+
+try:
+    from scipy.integrate import nquad
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+
 # Diccionario de funciones para sympify/lambdify (incluye sec, csc, cot)
 sympy_func_dict = {
     "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
     "log": sp.log, "exp": sp.exp, "sqrt": sp.sqrt,
     "sec": sp.sec, "csc": sp.csc, "cot": sp.cot
 }
+
+def parse_math_expr(expr_str):
+    """
+    Permite entradas tipo 2x, sin x, x^2, etc.
+    """
+    transformations = (
+        standard_transformations +
+        (implicit_multiplication_application, convert_xor)
+    )
+    return parse_expr(expr_str, transformations=transformations, local_dict=sympy_func_dict)
 
 def simpson_simple(f, a, b, n=1000):
     if n % 2:
@@ -27,7 +48,7 @@ def simpson_doble_variable(f, x_inf, x_sup, y_inf_func, y_sup_func, nx=50, ny=50
         y_inf = y_inf_func(xi)
         y_sup = y_sup_func(xi)
         if y_sup <= y_inf:
-            continue  # Salta subintervalos nulos o con orden incorrecto
+            continue
         y_vals = np.linspace(y_inf, y_sup, ny+1)
         hy = (y_sup - y_inf) / ny
         S_y = 0.0
@@ -46,9 +67,9 @@ def simpson_doble_variable(f, x_inf, x_sup, y_inf_func, y_sup_func, nx=50, ny=50
             else:
                 coeff *= 2
             S_y += coeff * f(xi, yj)
-        S_y *= hy / 3  # Simpson en y, para este x
+        S_y *= hy / 3
         S_total += S_y
-    return S_total * hx / 3  # Simpson en x
+    return S_total * hx / 3
 
 def simpson_triple_variable(
     f, x_inf, x_sup,
@@ -66,7 +87,7 @@ def simpson_triple_variable(
         y_inf = y_inf_func(xi)
         y_sup = y_sup_func(xi)
         if y_sup <= y_inf:
-            continue  # Salta subintervalos nulos o invertidos para y
+            continue
         y_vals = np.linspace(y_inf, y_sup, ny+1)
         hy = (y_sup - y_inf) / ny
         S_y = 0.0
@@ -74,7 +95,7 @@ def simpson_triple_variable(
             z_inf = z_inf_func(xi, yj)
             z_sup = z_sup_func(xi, yj)
             if z_sup <= z_inf:
-                continue  # Salta subintervalos nulos o invertidos para z
+                continue
             z_vals = np.linspace(z_inf, z_sup, nz+1)
             hz = (z_sup - z_inf) / nz
             S_z = 0.0
@@ -114,41 +135,55 @@ def _valida_resultado(result):
     except Exception:
         return False
 
-def calcular_integral(tipo: str, expresion: str, limites: dict):
+def calcular_integral(tipo: str, expresion: str, limites: dict, metodo: str = "simpson"):
     x, y, z = sp.symbols('x y z')
     resultado = None
 
     try:
+        # Robust parser (permite notación matemática común)
+        expr = parse_math_expr(expresion) if expresion else None
+
         if tipo == "simple":
-            expr = sp.sympify(expresion, locals=sympy_func_dict)
             f = sp.lambdify(x, expr, modules=["numpy"])
             a, b = limites["a"], limites["b"]
-            resultado = simpson_simple(f, a, b, n=1000)
+            if metodo == "simpson":
+                resultado = simpson_simple(f, a, b, n=1000)
+            elif metodo == "scipy" and SCIPY_AVAILABLE:
+                resultado, err = nquad(lambda x_: f(x_), [[a, b]])
+            else:
+                return {"error": "Método de integración no soportado o scipy no instalado."}
 
         elif tipo == "doble":
-            expr = sp.sympify(expresion, locals=sympy_func_dict)
             f = sp.lambdify((x, y), expr, modules=["numpy"])
-
             y_inf_expr = limites["c"]
             y_sup_expr = limites["d"]
 
             if isinstance(y_inf_expr, str):
-                y_inf_func = sp.lambdify(x, sp.sympify(y_inf_expr, locals=sympy_func_dict), modules=["numpy"])
+                y_inf_func = sp.lambdify(x, parse_math_expr(y_inf_expr), modules=["numpy"])
             else:
                 y_inf_func = lambda x: y_inf_expr
             if isinstance(y_sup_expr, str):
-                y_sup_func = sp.lambdify(x, sp.sympify(y_sup_expr, locals=sympy_func_dict), modules=["numpy"])
+                y_sup_func = sp.lambdify(x, parse_math_expr(y_sup_expr), modules=["numpy"])
             else:
                 y_sup_func = lambda x: y_sup_expr
 
-            resultado = simpson_doble_variable(
-                f, limites["a"], limites["b"], y_inf_func, y_sup_func, nx=50, ny=50
-            )
+            if metodo == "simpson":
+                resultado = simpson_doble_variable(
+                    f, limites["a"], limites["b"], y_inf_func, y_sup_func, nx=50, ny=50
+                )
+            elif metodo == "scipy" and SCIPY_AVAILABLE:
+                def scipy_integrand(y_, x_):
+                    return f(x_, y_)
+                a, b = limites["a"], limites["b"]
+                resultado, err = nquad(
+                    scipy_integrand, 
+                    [[a, b], lambda x_: y_inf_func(x_), lambda x_: y_sup_func(x_)]
+                )
+            else:
+                return {"error": "Método de integración no soportado o scipy no instalado."}
 
         elif tipo == "triple":
-            expr = sp.sympify(expresion, locals=sympy_func_dict)
             f = sp.lambdify((x, y, z), expr, modules=["numpy"])
-
             a, b = limites["a"], limites["b"]
             c_expr = limites["c"]
             d_expr = limites["d"]
@@ -156,28 +191,44 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             f_expr = limites["f"]
 
             if isinstance(c_expr, str):
-                y_inf_func = sp.lambdify(x, sp.sympify(c_expr, locals=sympy_func_dict), modules=["numpy"])
+                y_inf_func = sp.lambdify(x, parse_math_expr(c_expr), modules=["numpy"])
             else:
                 y_inf_func = lambda x: c_expr
 
             if isinstance(d_expr, str):
-                y_sup_func = sp.lambdify(x, sp.sympify(d_expr, locals=sympy_func_dict), modules=["numpy"])
+                y_sup_func = sp.lambdify(x, parse_math_expr(d_expr), modules=["numpy"])
             else:
                 y_sup_func = lambda x: d_expr
 
             if isinstance(e_expr, str):
-                z_inf_func = sp.lambdify([x, y], sp.sympify(e_expr, locals=sympy_func_dict), modules=["numpy"])
+                z_inf_func = sp.lambdify([x, y], parse_math_expr(e_expr), modules=["numpy"])
             else:
                 z_inf_func = lambda x, y: e_expr
 
             if isinstance(f_expr, str):
-                z_sup_func = sp.lambdify([x, y], sp.sympify(f_expr, locals=sympy_func_dict), modules=["numpy"])
+                z_sup_func = sp.lambdify([x, y], parse_math_expr(f_expr), modules=["numpy"])
             else:
                 z_sup_func = lambda x, y: f_expr
 
-            resultado = simpson_triple_variable(
-                f, a, b, y_inf_func, y_sup_func, z_inf_func, z_sup_func, nx=10, ny=10, nz=10
-            )
+            if metodo == "simpson":
+                resultado = simpson_triple_variable(
+                    f, a, b, y_inf_func, y_sup_func, z_inf_func, z_sup_func, nx=10, ny=10, nz=10
+                )
+            elif metodo == "scipy" and SCIPY_AVAILABLE:
+                def scipy_integrand(z_, y_, x_):
+                    return f(x_, y_, z_)
+                resultado, err = nquad(
+                    scipy_integrand,
+                    [
+                        [a, b],
+                        lambda x_: y_inf_func(x_),
+                        lambda x_: y_sup_func(x_),
+                        lambda x_, y_: z_inf_func(x_, y_),
+                        lambda x_, y_: z_sup_func(x_, y_)
+                    ][:4] # nquad espera listas anidadas por cada var
+                )
+            else:
+                return {"error": "Método de integración no soportado o scipy no instalado."}
 
         else:
             return {"error": f"Tipo de integral no soportada: {tipo}"}

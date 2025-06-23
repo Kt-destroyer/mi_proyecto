@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import Plot from "react-plotly.js"; // ADDED: for interactive graphs
 
 const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
@@ -46,6 +47,20 @@ const ejemplos = [
   },
 ];
 
+// --- AUXILIAR: Preprocesador de expresiones matemáticas ---
+function preprocesarExpresion(expr) {
+  let r = expr;
+  // Implicit multiplication: 2x -> 2*x, xsin(x) -> x*sin(x)
+  r = r.replace(/(\d)([a-zA-Z])/g, '$1*$2');
+  r = r.replace(/([a-zA-Z])(\d)/g, '$1*$2');
+  // sin x -> sin(x)
+  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)'); // already fine
+  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s+([a-zA-Z0-9]+)/g, '$1($2)');
+  // ^ to **
+  r = r.replace(/(\w+)\s*\^\s*(\w+)/g, '$1**$2');
+  return r;
+}
+
 export default function CalculadoraIntegrales() {
   const [tipo, setTipo] = useState("Simple");
   const [expresion, setExpresion] = useState("");
@@ -58,9 +73,10 @@ export default function CalculadoraIntegrales() {
   const [resultado, setResultado] = useState(null);
   const [grafica, setGrafica] = useState(null);
   const [error, setError] = useState(null);
+  const [modoInteractivo, setModoInteractivo] = useState(true); // NEW: toggle for interactive
 
   const advertenciaMultiplicacion =
-    "Recuerda: Para multiplicar debes usar el símbolo *, por ejemplo 1+cos(2*x) y NO 1+cos(2x).";
+    "Puedes escribir expresiones con notación natural: 2x, sin x, x^2. El sistema las corrige automáticamente.";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,38 +87,48 @@ export default function CalculadoraIntegrales() {
     let endpoint = "";
     let data = {};
 
+    // Preprocesa expresión y límites
+    const expProc = preprocesarExpresion(expresion);
+    const yInfProc = preprocesarExpresion(yInf);
+    const ySupProc = preprocesarExpresion(ySup);
+    const zInfProc = preprocesarExpresion(zInf);
+    const zSupProc = preprocesarExpresion(zSup);
+
     if (tipo === "Simple") {
       endpoint = "/simple";
       data = {
-        expresion: expresion,
+        expresion: expProc,
         limite_inf: parseFloat(limiteInf),
         limite_sup: parseFloat(limiteSup),
+        modo_interactivo: modoInteractivo, // para backend
       };
     } else if (tipo === "Doble") {
       endpoint = "/doble";
       data = {
-        expresion: expresion,
+        expresion: expProc,
         x_inf: parseFloat(limiteInf),
         x_sup: parseFloat(limiteSup),
-        y_inf: yInf,
-        y_sup: ySup,
+        y_inf: yInfProc,
+        y_sup: ySupProc,
+        modo_interactivo: modoInteractivo,
       };
     } else if (tipo === "Triple") {
       endpoint = "/triple";
       data = {
-        expresion: expresion,
+        expresion: expProc,
         x_inf: parseFloat(limiteInf),
         x_sup: parseFloat(limiteSup),
-        y_inf: yInf,
-        y_sup: ySup,
-        z_inf: zInf,
-        z_sup: zSup,
+        y_inf: yInfProc,
+        y_sup: ySupProc,
+        z_inf: zInfProc,
+        z_sup: zSupProc,
+        modo_interactivo: modoInteractivo,
       };
     }
 
     try {
       const res = await axios.post(`${backendUrl}${endpoint}`, data);
-      setResultado(res.data.resultado);
+      setResultado(res.data.valor || res.data.resultado);
       setGrafica(res.data.grafica);
     } catch (err) {
       if (
@@ -116,6 +142,32 @@ export default function CalculadoraIntegrales() {
       }
     }
   };
+
+  // --- Renderizado gráfico: PNG o Plotly interactivo ---
+  function renderGrafica() {
+    if (!grafica) return null;
+    if (typeof grafica === "string" && grafica.endsWith(".png")) {
+      return (
+        <img
+          src={`${backendUrl}/${grafica.replace(/\\/g, "/")}`}
+          alt="Gráfica de la integral"
+          style={{ maxWidth: 600, border: "1px solid #888", marginTop: 12 }}
+        />
+      );
+    }
+    // Si es un objeto Plotly (JSON), render interactivo
+    if (typeof grafica === "object" && grafica.data) {
+      return (
+        <Plot
+          data={grafica.data}
+          layout={grafica.layout}
+          config={{ responsive: true }}
+          style={{ maxWidth: 700, margin: "0 auto", marginTop: 12 }}
+        />
+      );
+    }
+    return null;
+  }
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
@@ -141,6 +193,14 @@ export default function CalculadoraIntegrales() {
               <option>Doble</option>
               <option>Triple</option>
             </select>
+          </label>
+          <label style={{ marginLeft: 20 }}>
+            Visualización interactiva{" "}
+            <input
+              type="checkbox"
+              checked={modoInteractivo}
+              onChange={() => setModoInteractivo((prev) => !prev)}
+            />
           </label>
         </div>
         <div style={{ margin: "8px 0" }}>
@@ -249,11 +309,7 @@ export default function CalculadoraIntegrales() {
       )}
       {grafica && (
         <div>
-          <img
-            src={`${backendUrl}/${grafica.replace(/\\/g, "/")}`}
-            alt="Gráfica de la integral"
-            style={{ maxWidth: 600, border: "1px solid #888", marginTop: 12 }}
-          />
+          {renderGrafica()}
         </div>
       )}
 
