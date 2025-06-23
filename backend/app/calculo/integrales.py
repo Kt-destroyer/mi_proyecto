@@ -1,5 +1,6 @@
 import sympy as sp
 import numpy as np
+import re
 
 from sympy.parsing.sympy_parser import (
     parse_expr, standard_transformations, implicit_multiplication_application,
@@ -30,6 +31,21 @@ def parse_math_expr(expr_str):
         (implicit_multiplication_application, convert_xor)
     )
     return parse_expr(str(expr_str), transformations=transformations, local_dict=sympy_func_dict)
+
+def get_limit_func(expr, args):
+    # Devuelve una función de las variables args a partir de un string, número o función
+    if isinstance(expr, (float, int)):
+        return lambda *a: float(expr)
+    elif isinstance(expr, str):
+        # Corrige entradas como x2 -> x*2, 2x -> 2*x, x^2 -> x**2
+        expr = expr.replace('^', '**')
+        expr = re.sub(r'([a-zA-Z])(\d)', r'\1*\2', expr)
+        expr = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', expr)
+        return sp.lambdify(args, parse_math_expr(expr), modules=["numpy"])
+    elif callable(expr):
+        return expr
+    else:
+        raise ValueError("No se pudo convertir el límite a función.")
 
 def simpson_simple(f, a, b, n=1000):
     if n % 2:
@@ -166,17 +182,8 @@ def calcular_integral(tipo: str, expresion: str, limites: dict, metodo: str = "s
         elif tipo == "doble":
             a, b = float(limites["a"]), float(limites["b"])
             f = sp.lambdify((x, y), expr, modules=["numpy"])
-            y_inf_expr = limites["c"]
-            y_sup_expr = limites["d"]
-
-            if isinstance(y_inf_expr, str):
-                y_inf_func = sp.lambdify(x, parse_math_expr(y_inf_expr), modules=["numpy"])
-            else:
-                y_inf_func = lambda x: float(y_inf_expr)
-            if isinstance(y_sup_expr, str):
-                y_sup_func = sp.lambdify(x, parse_math_expr(y_sup_expr), modules=["numpy"])
-            else:
-                y_sup_func = lambda x: float(y_sup_expr)
+            y_inf_func = get_limit_func(limites["c"], (x,))
+            y_sup_func = get_limit_func(limites["d"], (x,))
 
             if metodo == "simpson":
                 resultado = simpson_doble_variable(
@@ -194,39 +201,17 @@ def calcular_integral(tipo: str, expresion: str, limites: dict, metodo: str = "s
 
         elif tipo == "triple":
             a, b = float(limites["a"]), float(limites["b"])
-            c_expr = limites["c"]
-            d_expr = limites["d"]
-            e_expr = limites["e"]
-            f_expr = limites["f"]
             f = sp.lambdify((x, y, z), expr, modules=["numpy"])
-
-            # FIX: Manejar correctamente los límites funcionales para integración triple
-            if isinstance(c_expr, str):
-                y_inf_func = sp.lambdify(x, parse_math_expr(c_expr), modules=["numpy"])
-            else:
-                y_inf_func = lambda x: float(c_expr)
-
-            if isinstance(d_expr, str):
-                y_sup_func = sp.lambdify(x, parse_math_expr(d_expr), modules=["numpy"])
-            else:
-                y_sup_func = lambda x: float(d_expr)
-
-            if isinstance(e_expr, str):
-                z_inf_func = sp.lambdify((x, y), parse_math_expr(e_expr), modules=["numpy"])
-            else:
-                z_inf_func = lambda x, y: float(e_expr)
-
-            if isinstance(f_expr, str):
-                z_sup_func = sp.lambdify((x, y), parse_math_expr(f_expr), modules=["numpy"])
-            else:
-                z_sup_func = lambda x, y: float(f_expr)
+            y_inf_func = get_limit_func(limites["c"], (x,))
+            y_sup_func = get_limit_func(limites["d"], (x,))
+            z_inf_func = get_limit_func(limites["e"], (x, y))
+            z_sup_func = get_limit_func(limites["f"], (x, y))
 
             if metodo == "simpson":
                 resultado = simpson_triple_variable(
                     f, a, b, y_inf_func, y_sup_func, z_inf_func, z_sup_func, nx=10, ny=10, nz=10
                 )
             elif metodo == "scipy" and SCIPY_AVAILABLE:
-                # FIX: nquad requiere que los límites internos sean funciones correctamente anidadas
                 def scipy_integrand(z_, y_, x_):
                     return f(x_, y_, z_)
                 resultado, err = nquad(

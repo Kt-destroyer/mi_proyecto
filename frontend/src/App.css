@@ -138,3 +138,36 @@ input, .MuiInputBase-input, .MuiFormLabel-root, .MuiTypography-root {
   background: #43967d;
   border-radius: 8px;
 }
+
+/* --------- CALCULADORA DIVIDIDA EN DOS CUADROS --------- */
+.contenedor-flex {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.calcu-panel {
+  flex: 1 1 380px;
+  min-width: 340px;
+  max-width: 480px;
+}
+.manual-panel {
+  flex: 1 1 350px;
+  min-width: 320px;
+  max-width: 480px;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 0 5px #ddd;
+}
+
+@media (max-width: 900px) {
+  .contenedor-flex {
+    flex-direction: column;
+    gap: 0;
+  }
+  .manual-panel {
+    margin-top: 30px;
+  }
+}

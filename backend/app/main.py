@@ -163,7 +163,9 @@ def integral_triple(req: TripleIntegralRequest):
             return JSONResponse(status_code=400, content={
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
+        grafica = ""
         try:
+            # Intenta generar la gráfica, pero si falla, sigue mostrando el resultado
             grafica = generar_grafica("triple", str(expr), limites, modo_interactivo=req.modo_interactivo)
         except Exception as e:
             print("Error al graficar triple:", e)

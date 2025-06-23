@@ -1,9 +1,23 @@
 import React, { useState } from "react";
 import axios from "axios";
-import Plot from "react-plotly.js"; // ADDED: for interactive graphs
+import Plot from "react-plotly.js";
+import { backendUrl } from "../config";
 
-const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+// --- AUXILIAR: Preprocesador de expresiones matemáticas ---
+function preprocesarExpresion(expr) {
+  let r = expr;
+  // Implicit multiplication: 2x -> 2*x, xsin(x) -> x*sin(x)
+  r = r.replace(/(\d)([a-zA-Z])/g, '$1*$2');
+  r = r.replace(/([a-zA-Z])(\d)/g, '$1*$2');
+  // sin x -> sin(x)
+  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)'); // already fine
+  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s+([a-zA-Z0-9]+)/g, '$1($2)');
+  // ^ to **
+  r = r.replace(/(\w+)\s*\^\s*(\w+)/g, '$1**$2');
+  return r;
+}
 
+// --- Tabla de ejemplos y manual de uso ---
 const ejemplos = [
   {
     tipo: "Simple",
@@ -47,18 +61,60 @@ const ejemplos = [
   },
 ];
 
-// --- AUXILIAR: Preprocesador de expresiones matemáticas ---
-function preprocesarExpresion(expr) {
-  let r = expr;
-  // Implicit multiplication: 2x -> 2*x, xsin(x) -> x*sin(x)
-  r = r.replace(/(\d)([a-zA-Z])/g, '$1*$2');
-  r = r.replace(/([a-zA-Z])(\d)/g, '$1*$2');
-  // sin x -> sin(x)
-  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)'); // already fine
-  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s+([a-zA-Z0-9]+)/g, '$1($2)');
-  // ^ to **
-  r = r.replace(/(\w+)\s*\^\s*(\w+)/g, '$1**$2');
-  return r;
+function ManualDeUso() {
+  return (
+    <div>
+      <h3>Manual de uso y ejemplos</h3>
+      <ul style={{ marginBottom: 20 }}>
+        <li>
+          <b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x</b> y <b>y</b> para dobles, y <b>x, y, z</b> para triples.
+        </li>
+        <li>
+          <b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.
+        </li>
+        <li>
+          <b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.
+        </li>
+        <li>
+          <b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, x+2]</code> o <code>z: [x+y, x+y+1]</code>.
+        </li>
+        <li>
+          <b>Dominio válido:</b> Asegúrate que el límite superior sea mayor que el inferior para todo el rango.
+        </li>
+        <li>
+          <b>Errores comunes:</b> Si ves resultados 0 o infinitos, revisa la sintaxis y los dominios.
+        </li>
+        <li>
+          <b>Visualización:</b> Puedes alternar entre gráfica interactiva (Plotly) y estática (PNG) usando el switch de visualización.
+        </li>
+      </ul>
+      <h4>Ejemplos de expresiones y límites:</h4>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.97em" }}>
+        <thead>
+          <tr style={{ borderBottom: "1px solid #888" }}>
+            <th>Tipo</th>
+            <th>Expresión</th>
+            <th>Límites x</th>
+            <th>Límites y</th>
+            <th>Límites z</th>
+            <th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ejemplos.map((ej, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
+              <td>{ej.tipo}</td>
+              <td>{ej.expresion}</td>
+              <td>{ej.limites_x}</td>
+              <td>{ej.limites_y}</td>
+              <td>{ej.limites_z}</td>
+              <td>{ej.descripcion}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default function CalculadoraIntegrales() {
@@ -73,7 +129,7 @@ export default function CalculadoraIntegrales() {
   const [resultado, setResultado] = useState(null);
   const [grafica, setGrafica] = useState(null);
   const [error, setError] = useState(null);
-  const [modoInteractivo, setModoInteractivo] = useState(true); // NEW: toggle for interactive
+  const [modoInteractivo, setModoInteractivo] = useState(true);
 
   const advertenciaMultiplicacion =
     "Puedes escribir expresiones con notación natural: 2x, sin x, x^2. El sistema las corrige automáticamente.";
@@ -100,7 +156,7 @@ export default function CalculadoraIntegrales() {
         expresion: expProc,
         limite_inf: parseFloat(limiteInf),
         limite_sup: parseFloat(limiteSup),
-        modo_interactivo: modoInteractivo, // para backend
+        modo_interactivo: modoInteractivo,
       };
     } else if (tipo === "Doble") {
       endpoint = "/doble";
@@ -143,7 +199,6 @@ export default function CalculadoraIntegrales() {
     }
   };
 
-  // --- Renderizado gráfico: PNG o Plotly interactivo ---
   function renderGrafica() {
     if (!grafica) return null;
     if (typeof grafica === "string" && grafica.endsWith(".png")) {
@@ -155,7 +210,6 @@ export default function CalculadoraIntegrales() {
         />
       );
     }
-    // Si es un objeto Plotly (JSON), render interactivo
     if (typeof grafica === "object" && grafica.data) {
       return (
         <Plot
@@ -169,175 +223,175 @@ export default function CalculadoraIntegrales() {
     return null;
   }
 
+  // --- UI dividida en dos cuadros ---
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
-      <h2 style={{ textAlign: "center" }}>Calculadora de Integrales</h2>
-      <p style={{ textAlign: "center" }}>
-        Elige el tipo de integral, ingresa la expresión y los límites.<br />
-        Puedes usar funciones para límites internos en integrales dobles/triples (<b>ej: sin(x)</b>).
-      </p>
-      <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
-        <div>
-          <label>
-            Tipo de integral{" "}
-            <select
-              value={tipo}
-              onChange={(e) => {
-                setTipo(e.target.value);
-                setError(null);
-                setResultado(null);
-                setGrafica(null);
-              }}
-            >
-              <option>Simple</option>
-              <option>Doble</option>
-              <option>Triple</option>
-            </select>
-          </label>
-          <label style={{ marginLeft: 20 }}>
-            Visualización interactiva{" "}
-            <input
-              type="checkbox"
-              checked={modoInteractivo}
-              onChange={() => setModoInteractivo((prev) => !prev)}
-            />
-          </label>
-        </div>
-        <div style={{ margin: "8px 0" }}>
-          <label>
-            Expresión*{" "}
-            <input
-              type="text"
-              value={expresion}
-              placeholder="Ej: x**2 + 3"
-              onChange={(e) => setExpresion(e.target.value)}
-              style={{ width: 220 }}
-              required
-            />
-          </label>
-          <div style={{ color: "#b85c00", fontSize: "0.95em", marginTop: 2 }}>
-            {advertenciaMultiplicacion}
-          </div>
-        </div>
-        <div style={{ margin: "8px 0" }}>
-          <label>
-            Límite inferior*{" "}
-            <input
-              type="text"
-              value={limiteInf}
-              onChange={(e) => setLimiteInf(e.target.value)}
-              style={{ width: 60 }}
-              required
-            />
-          </label>
-          <label style={{ marginLeft: 16 }}>
-            Límite superior*{" "}
-            <input
-              type="text"
-              value={limiteSup}
-              onChange={(e) => setLimiteSup(e.target.value)}
-              style={{ width: 60 }}
-              required
-            />
-          </label>
-        </div>
-        {(tipo === "Doble" || tipo === "Triple") && (
-          <div style={{ margin: "8px 0" }}>
+    <div className="contenedor-flex" style={{
+      display: "flex",
+      gap: 40,
+      alignItems: "flex-start",
+      justifyContent: "center",
+      flexWrap: "wrap"
+    }}>
+      {/* Panel de la calculadora */}
+      <div className="calcu-panel" style={{
+        flex: "1 1 380px",
+        minWidth: 340,
+        maxWidth: 480
+      }}>
+        <h2 style={{ textAlign: "center" }}>Calculadora de Integrales</h2>
+        <p style={{ textAlign: "center" }}>
+          Elige el tipo de integral, ingresa la expresión y los límites.<br />
+          Puedes usar funciones para límites internos en integrales dobles/triples (<b>ej: sin(x)</b>).
+        </p>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 24 }}>
+          <div>
             <label>
-              Límite y inferior{" "}
-              <input
-                type="text"
-                value={yInf}
-                onChange={(e) => setYInf(e.target.value)}
-                style={{ width: 80 }}
-                placeholder="Ej: x"
-                required={tipo !== "Simple"}
-              />
+              Tipo de integral{" "}
+              <select
+                value={tipo}
+                onChange={(e) => {
+                  setTipo(e.target.value);
+                  setError(null);
+                  setResultado(null);
+                  setGrafica(null);
+                }}
+              >
+                <option>Simple</option>
+                <option>Doble</option>
+                <option>Triple</option>
+              </select>
             </label>
-            <label style={{ marginLeft: 16 }}>
-              Límite y superior{" "}
+            <label style={{ marginLeft: 20 }}>
+              Visualización interactiva{" "}
               <input
-                type="text"
-                value={ySup}
-                onChange={(e) => setYSup(e.target.value)}
-                style={{ width: 80 }}
-                placeholder="Ej: x+2"
-                required={tipo !== "Simple"}
+                type="checkbox"
+                checked={modoInteractivo}
+                onChange={() => setModoInteractivo((prev) => !prev)}
               />
             </label>
           </div>
-        )}
-        {tipo === "Triple" && (
           <div style={{ margin: "8px 0" }}>
             <label>
-              Límite z inferior{" "}
+              Expresión*{" "}
               <input
                 type="text"
-                value={zInf}
-                onChange={(e) => setZInf(e.target.value)}
-                style={{ width: 80 }}
-                placeholder="Ej: x+y"
+                value={expresion}
+                placeholder="Ej: x**2 + 3"
+                onChange={(e) => setExpresion(e.target.value)}
+                style={{ width: 220 }}
+                required
+              />
+            </label>
+            <div style={{ color: "#b85c00", fontSize: "0.95em", marginTop: 2 }}>
+              {advertenciaMultiplicacion}
+            </div>
+          </div>
+          <div style={{ margin: "8px 0" }}>
+            <label>
+              Límite inferior*{" "}
+              <input
+                type="text"
+                value={limiteInf}
+                onChange={(e) => setLimiteInf(e.target.value)}
+                style={{ width: 60 }}
                 required
               />
             </label>
             <label style={{ marginLeft: 16 }}>
-              Límite z superior{" "}
+              Límite superior*{" "}
               <input
                 type="text"
-                value={zSup}
-                onChange={(e) => setZSup(e.target.value)}
-                style={{ width: 80 }}
-                placeholder="Ej: x+y+1"
+                value={limiteSup}
+                onChange={(e) => setLimiteSup(e.target.value)}
+                style={{ width: 60 }}
                 required
               />
             </label>
           </div>
+          {(tipo === "Doble" || tipo === "Triple") && (
+            <div style={{ margin: "8px 0" }}>
+              <label>
+                Límite y inferior{" "}
+                <input
+                  type="text"
+                  value={yInf}
+                  onChange={(e) => setYInf(e.target.value)}
+                  style={{ width: 80 }}
+                  placeholder="Ej: x"
+                  required={tipo !== "Simple"}
+                />
+              </label>
+              <label style={{ marginLeft: 16 }}>
+                Límite y superior{" "}
+                <input
+                  type="text"
+                  value={ySup}
+                  onChange={(e) => setYSup(e.target.value)}
+                  style={{ width: 80 }}
+                  placeholder="Ej: x+2"
+                  required={tipo !== "Simple"}
+                />
+              </label>
+            </div>
+          )}
+          {tipo === "Triple" && (
+            <div style={{ margin: "8px 0" }}>
+              <label>
+                Límite z inferior{" "}
+                <input
+                  type="text"
+                  value={zInf}
+                  onChange={(e) => setZInf(e.target.value)}
+                  style={{ width: 80 }}
+                  placeholder="Ej: x+y"
+                  required
+                />
+              </label>
+              <label style={{ marginLeft: 16 }}>
+                Límite z superior{" "}
+                <input
+                  type="text"
+                  value={zSup}
+                  onChange={(e) => setZSup(e.target.value)}
+                  style={{ width: 80 }}
+                  placeholder="Ej: x+y+1"
+                  required
+                />
+              </label>
+            </div>
+          )}
+          <button type="submit" style={{ marginTop: 12, padding: "6px 20px" }}>
+            CALCULAR
+          </button>
+        </form>
+        {error && (
+          <div style={{ color: "red", marginBottom: 16, textAlign: "center" }}>
+            {error}
+          </div>
         )}
-        <button type="submit" style={{ marginTop: 12, padding: "6px 20px" }}>
-          CALCULAR
-        </button>
-      </form>
-      {error && (
-        <div style={{ color: "red", marginBottom: 16, textAlign: "center" }}>
-          {error}
-        </div>
-      )}
-      {resultado !== null && (
-        <div style={{ marginBottom: 12 }}>
-          <b>Resultado:</b> {resultado}
-        </div>
-      )}
-      {grafica && (
-        <div>
-          {renderGrafica()}
-        </div>
-      )}
-
-      <h3>Ejemplos de expresiones y límites:</h3>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ borderBottom: "1px solid #888" }}>
-            <th>Tipo</th>
-            <th>Expresión</th>
-            <th>Límites x</th>
-            <th>Límites y</th>
-            <th>Límites z</th>
-            <th>Descripción</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ejemplos.map((ej, i) => (
-            <tr key={i} style={{ borderBottom: "1px solid #ddd" }}>
-              <td>{ej.tipo}</td>
-              <td>{ej.expresion}</td>
-              <td>{ej.limites_x}</td>
-              <td>{ej.limites_y}</td>
-              <td>{ej.limites_z}</td>
-              <td>{ej.descripcion}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        {resultado !== null && (
+          <div style={{ marginBottom: 12 }}>
+            <b>Resultado:</b> {resultado}
+          </div>
+        )}
+        {grafica && (
+          <div>
+            {renderGrafica()}
+          </div>
+        )}
+      </div>
+      {/* Panel del manual y ejemplos */}
+      <div className="manual-panel" style={{
+        flex: "1 1 350px",
+        minWidth: 320,
+        maxWidth: 480,
+        background: "#f7f7f7",
+        borderRadius: 12,
+        padding: 24,
+        boxShadow: "0 0 5px #ddd"
+      }}>
+        <ManualDeUso />
+      </div>
     </div>
   );
 }
