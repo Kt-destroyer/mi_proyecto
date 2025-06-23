@@ -13,12 +13,24 @@ try:
 except ImportError:
     SCIPY_AVAILABLE = False
 
-# Diccionario de funciones para sympify/lambdify (incluye sec, csc, cot)
+# Diccionario de funciones para sympify/lambdify (incluye sec, csc, cot, Abs, sqrt, exp)
 sympy_func_dict = {
     "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
     "log": sp.log, "exp": sp.exp, "sqrt": sp.sqrt,
-    "sec": sp.sec, "csc": sp.csc, "cot": sp.cot
+    "sec": sp.sec, "csc": sp.csc, "cot": sp.cot,
+    "Abs": sp.Abs, "abs": sp.Abs  # Fix: agrega Abs y abs
 }
+
+def preprocess_math_expr(expr_str):
+    """
+    Preprocesa la expresión matemática:
+    - Reemplaza abs( por Abs(
+    - Normaliza sqrt y exp (por si acaso)
+    """
+    # Reemplaza abs( por Abs(
+    expr_str = re.sub(r'\babs\s*\(', 'Abs(', expr_str)
+    # Otras funciones pueden agregarse aquí si es necesario
+    return expr_str
 
 def parse_math_expr(expr_str):
     """
@@ -26,6 +38,7 @@ def parse_math_expr(expr_str):
     """
     if expr_str is None or expr_str == "":
         raise ValueError("Expresión vacía")
+    expr_str = preprocess_math_expr(expr_str)
     transformations = (
         standard_transformations +
         (implicit_multiplication_application, convert_xor)
@@ -41,6 +54,7 @@ def get_limit_func(expr, args):
         expr = expr.replace('^', '**')
         expr = re.sub(r'([a-zA-Z])(\d)', r'\1*\2', expr)
         expr = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', expr)
+        expr = preprocess_math_expr(expr)
         return sp.lambdify(args, parse_math_expr(expr), modules=["numpy"])
     elif callable(expr):
         return expr

@@ -25,7 +25,7 @@ const BACKEND_URL = "http://localhost:8000";
 type TipoIntegral = "simple" | "doble" | "triple";
 
 function tieneFuncionesSinParentesis(expr: string) {
-  const funciones = ['sin', 'cos', 'tan', 'log', 'exp', 'sqrt', 'sec', 'csc', 'cot'];
+  const funciones = ['sin', 'cos', 'tan', 'log', 'exp', 'sqrt', 'abs', 'sec', 'csc', 'cot'];
   for (const f of funciones) {
     const regex = new RegExp(`\\b${f}\\s+[a-zA-Z0-9]`, "i");
     if (regex.test(expr)) {
@@ -33,6 +33,110 @@ function tieneFuncionesSinParentesis(expr: string) {
     }
   }
   return false;
+}
+
+function ManualDeUso() {
+  return (
+    <div>
+      <h3>Manual de uso</h3>
+      <ul>
+        <li><b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x, y</b> para dobles, y <b>x, y, z</b> para triples.</li>
+        <li><b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>abs</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.</li>
+        <li><b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.</li>
+        <li><b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, sqrt(x)]</code> o <code>z: [x+y, x+y+1]</code>.</li>
+        <li><b>Dominio válido:</b> Asegúrate que el límite superior sea mayor que el inferior para todo el rango.</li>
+        <li><b>Errores comunes:</b> Si ves resultados 0 o infinitos, revisa la sintaxis y los dominios.</li>
+        <li><b>Visualización:</b> Puedes alternar entre gráfica interactiva (Plotly) y estática (PNG).</li>
+      </ul>
+      <h4>Ejemplos de expresiones y límites:</h4>
+      <table className="ejemplos-tabla">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Expresión</th>
+            <th>Límites x</th>
+            <th>Límites y</th>
+            <th>Límites z</th>
+            <th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Simple</td>
+            <td>x**2 + 3</td>
+            <td>[0, 2]</td>
+            <td>-</td>
+            <td>-</td>
+            <td>Integral de x<sup>2</sup>+3 de 0 a 2</td>
+          </tr>
+          <tr>
+            <td>Doble</td>
+            <td>x*y</td>
+            <td>[0, 1]</td>
+            <td>[x, x+2]</td>
+            <td>-</td>
+            <td>Doble integral con límites funcionales en y</td>
+          </tr>
+          <tr>
+            <td>Doble</td>
+            <td>sin(x) + cos(y)</td>
+            <td>[0, 1]</td>
+            <td>[0, 3]</td>
+            <td>-</td>
+            <td>Funciones trigonométricas</td>
+          </tr>
+          <tr>
+            <td>Triple</td>
+            <td>x*y*z</td>
+            <td>[0, 1]</td>
+            <td>[x, x+1]</td>
+            <td>[x+y, x+y+1]</td>
+            <td>Triple integral con límites dependientes</td>
+          </tr>
+          <tr>
+            <td>Triple</td>
+            <td>exp(-x**2-y**2-z**2)</td>
+            <td>[0, 1]</td>
+            <td>[0, 1]</td>
+            <td>[0, 1]</td>
+            <td>Exponenciales en triple integral</td>
+          </tr>
+          <tr>
+            <td>Doble</td>
+            <td>sqrt(x*y)</td>
+            <td>[0, 1]</td>
+            <td>[0, sqrt(x)]</td>
+            <td>-</td>
+            <td>Raíz cuadrada, límite funcional</td>
+          </tr>
+          <tr>
+            <td>Doble</td>
+            <td>abs(x-y)</td>
+            <td>[0, 2]</td>
+            <td>[x, 2]</td>
+            <td>-</td>
+            <td>Valor absoluto, límite dependiente</td>
+          </tr>
+          <tr>
+            <td>Doble</td>
+            <td>x**2 + sin(y)*cos(x)</td>
+            <td>[0, pi]</td>
+            <td>[0, 2*pi]</td>
+            <td>-</td>
+            <td>Polinomio y funciones trigonométricas</td>
+          </tr>
+          <tr>
+            <td>Triple</td>
+            <td>sin(x*y*z)</td>
+            <td>[0, pi]</td>
+            <td>[0, pi/2]</td>
+            <td>[0, 2]</td>
+            <td>Trigonométrica en triple integral</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default function App() {
@@ -141,10 +245,7 @@ export default function App() {
         });
       }
       if (res) {
-        // FIX: Obtener el resultado numérico desde "valor" (no "resultado")
         setResultado(res.data.valor !== undefined ? res.data.valor : null);
-
-        // Gráfica
         if (res.data.grafica) {
           if (typeof res.data.grafica === "string") {
             setGraficaUrl(
@@ -185,7 +286,6 @@ export default function App() {
       );
     }
     if (typeof graficaUrl === "object" && graficaUrl.data) {
-      // FIX: Forzar tamaño responsivo y correcto para que no se salga del cuadro
       return (
         <div style={{ width: "100%", maxWidth: 700, margin: "0 auto", marginTop: 12, overflow: "auto" }}>
           <Plot
@@ -207,295 +307,246 @@ export default function App() {
   }
 
   return (
-    <div className="app-center">
-      <Paper className="app-paper" elevation={8} sx={{ p: 4 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom align="center" sx={{ fontFamily: "'Roboto Slab', serif" }}>
-          Calculadora de Integrales
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom align="center" sx={{ color: "#333", fontFamily: "'Montserrat',sans-serif" }}>
-          Elige el tipo de integral, ingresa la expresión y los límites.<br />
-          Puedes usar funciones para límites internos en integrales dobles/triples (<b>ej: sin(x)</b>).
-        </Typography>
-        {resultado === null && (
-        <>
-        <Box component="form" onSubmit={calcular} sx={{ mt: 3 }}>
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>Tipo de integral</InputLabel>
-            <Select value={tipo} label="Tipo de integral" onChange={handleTipoChange}>
-              <MenuItem value="simple">Simple</MenuItem>
-              <MenuItem value="doble">Doble</MenuItem>
-              <MenuItem value="triple">Triple</MenuItem>
-            </Select>
-          </FormControl>
+    <div className="app-center" style={{ minHeight: "100vh" }}>
+      {resultado === null ? (
+        <div className="contenedor-flex">
+          {/* Panel izquierdo: calculadora */}
+          <div className="calcu-panel">
+            <Paper className="app-paper" elevation={8} sx={{ p: 4, background: "rgba(255,255,255,0.95)" }}>
+              <Typography variant="h4" fontWeight={700} gutterBottom align="center" sx={{ fontFamily: "'Roboto Slab', serif" }}>
+                Calculadora de Integrales
+              </Typography>
+              <Typography variant="subtitle1" gutterBottom align="center" sx={{ color: "#333", fontFamily: "'Montserrat',sans-serif" }}>
+                Elige el tipo de integral, ingresa la expresión y los límites.<br />
+                Puedes usar funciones para límites internos en integrales dobles/triples (<b>ej: sin(x)</b>).
+              </Typography>
+              <Box component="form" onSubmit={calcular} sx={{ mt: 3 }}>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel>Tipo de integral</InputLabel>
+                  <Select value={tipo} label="Tipo de integral" onChange={handleTipoChange}>
+                    <MenuItem value="simple">Simple</MenuItem>
+                    <MenuItem value="doble">Doble</MenuItem>
+                    <MenuItem value="triple">Triple</MenuItem>
+                  </Select>
+                </FormControl>
 
-          <TextField
-            label="Expresión"
-            fullWidth
-            required
-            variant="outlined"
-            sx={{ mb: 3 }}
-            value={expresion}
-            onChange={e => setExpresion(e.target.value)}
-            placeholder={tipo === "simple" ? "ej: x**2 + 3" : tipo === "doble" ? "ej: x*y + y**2" : "ej: x*y*z"}
-          />
-
-          {tipo === "simple" && (
-            <div className="row">
-              <div className="col">
                 <TextField
-                  label="Límite inferior"
+                  label="Expresión"
                   fullWidth
                   required
-                  value={limiteInf}
-                  onChange={e => setLimiteInf(e.target.value)}
-                  type="number"
+                  variant="outlined"
+                  sx={{ mb: 3 }}
+                  value={expresion}
+                  onChange={e => setExpresion(e.target.value)}
+                  placeholder={tipo === "simple" ? "ej: x**2 + 3" : tipo === "doble" ? "ej: x*y + y**2" : "ej: x*y*z"}
                 />
-              </div>
-              <div className="col">
-                <TextField
-                  label="Límite superior"
-                  fullWidth
-                  required
-                  value={limiteSup}
-                  onChange={e => setLimiteSup(e.target.value)}
-                  type="number"
-                />
-              </div>
-            </div>
-          )}
 
-          {tipo === "doble" && (
-            <>
-              <div className="row">
-                <div className="col">
-                  <TextField
-                    label="x inferior"
-                    fullWidth
-                    required
-                    value={xInf}
-                    onChange={e => setXInf(e.target.value)}
-                    type="number"
-                  />
-                </div>
-                <div className="col">
-                  <TextField
-                    label="x superior"
-                    fullWidth
-                    required
-                    value={xSup}
-                    onChange={e => setXSup(e.target.value)}
-                    type="number"
-                  />
-                </div>
-              </div>
-              <div className="row">
-                <div className="col">
-                  <TextField
-                    label="y inferior (número o función de x)"
-                    fullWidth
-                    required
-                    value={yInf}
-                    onChange={e => setYInf(e.target.value)}
-                    placeholder="ej: 0 o x"
-                  />
-                </div>
-                <div className="col">
-                  <TextField
-                    label="y superior (número o función de x)"
-                    fullWidth
-                    required
-                    value={ySup}
-                    onChange={e => setYSup(e.target.value)}
-                    placeholder="ej: 1 o x**2"
-                  />
-                </div>
-              </div>
-            </>
-          )}
+                {tipo === "simple" && (
+                  <div className="row">
+                    <div className="col">
+                      <TextField
+                        label="Límite inferior"
+                        fullWidth
+                        required
+                        value={limiteInf}
+                        onChange={e => setLimiteInf(e.target.value)}
+                        type="number"
+                      />
+                    </div>
+                    <div className="col">
+                      <TextField
+                        label="Límite superior"
+                        fullWidth
+                        required
+                        value={limiteSup}
+                        onChange={e => setLimiteSup(e.target.value)}
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                )}
 
-          {tipo === "triple" && (
-            <>
-              <div className="row">
-                <div className="col">
-                  <TextField
-                    label="x inferior"
-                    fullWidth
-                    required
-                    value={txInf}
-                    onChange={e => setTxInf(e.target.value)}
-                    type="number"
-                  />
-                </div>
-                <div className="col">
-                  <TextField
-                    label="x superior"
-                    fullWidth
-                    required
-                    value={txSup}
-                    onChange={e => setTxSup(e.target.value)}
-                    type="number"
-                  />
-                </div>
-              </div>
-              <div className="row">
-                <div className="col">
-                  <TextField
-                    label="y inferior (número o función de x)"
-                    fullWidth
-                    required
-                    value={tyInf}
-                    onChange={e => setTyInf(e.target.value)}
-                    placeholder="ej: 0 o x"
-                  />
-                </div>
-                <div className="col">
-                  <TextField
-                    label="y superior (número o función de x)"
-                    fullWidth
-                    required
-                    value={tySup}
-                    onChange={e => setTySup(e.target.value)}
-                    placeholder="ej: 1 o x**2"
-                  />
-                </div>
-              </div>
-              <div className="row">
-                <div className="col">
-                  <TextField
-                    label="z inferior (número o función de x,y)"
-                    fullWidth
-                    required
-                    value={tzInf}
-                    onChange={e => setTzInf(e.target.value)}
-                    placeholder="ej: 0 o x+y"
-                  />
-                </div>
-                <div className="col">
-                  <TextField
-                    label="z superior (número o función de x,y)"
-                    fullWidth
-                    required
-                    value={tzSup}
-                    onChange={e => setTzSup(e.target.value)}
-                    placeholder="ej: 1 o x**2+y"
-                  />
-                </div>
-              </div>
-            </>
-          )}
+                {tipo === "doble" && (
+                  <>
+                    <div className="row">
+                      <div className="col">
+                        <TextField
+                          label="x inferior"
+                          fullWidth
+                          required
+                          value={xInf}
+                          onChange={e => setXInf(e.target.value)}
+                          type="number"
+                        />
+                      </div>
+                      <div className="col">
+                        <TextField
+                          label="x superior"
+                          fullWidth
+                          required
+                          value={xSup}
+                          onChange={e => setXSup(e.target.value)}
+                          type="number"
+                        />
+                      </div>
+                    </div>
+                    <div className="row">
+                      <div className="col">
+                        <TextField
+                          label="y inferior (número o función de x)"
+                          fullWidth
+                          required
+                          value={yInf}
+                          onChange={e => setYInf(e.target.value)}
+                          placeholder="ej: 0 o x"
+                        />
+                      </div>
+                      <div className="col">
+                        <TextField
+                          label="y superior (número o función de x)"
+                          fullWidth
+                          required
+                          value={ySup}
+                          onChange={e => setYSup(e.target.value)}
+                          placeholder="ej: 1 o x**2"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
-          <Button variant="contained" color="primary" type="submit" size="large" sx={{
-            mt: 2,
-            background: "linear-gradient(90deg, #005f73 0%, #0a9396 100%)"
-          }}>
-            Calcular
-          </Button>
-        </Box>
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" sx={{ mb: 1, fontFamily: "'Roboto Slab', serif" }}>
-            Ejemplos de expresiones y límites:
-          </Typography>
-          <table className="ejemplos-tabla">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Expresión</th>
-                <th>Límites x</th>
-                <th>Límites y</th>
-                <th>Límites z</th>
-                <th>Descripción</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Simple</td>
-                <td>x**2 + 3</td>
-                <td>[0, 2]</td>
-                <td>-</td>
-                <td>-</td>
-                <td className="ejemplos-desc">Integral de x<sup>2</sup>+3 de 0 a 2</td>
-              </tr>
-              <tr>
-                <td>Doble</td>
-                <td>x*y</td>
-                <td>[0, 1]</td>
-                <td>[x, x+2]</td>
-                <td>-</td>
-                <td className="ejemplos-desc">Doble integral con límites funcionales en y</td>
-              </tr>
-              <tr>
-                <td>Doble</td>
-                <td>sin(x) + cos(y)</td>
-                <td>[0, 1]</td>
-                <td>[0, 3]</td>
-                <td>-</td>
-                <td className="ejemplos-desc">Funciones trigonométricas</td>
-              </tr>
-              <tr>
-                <td>Triple</td>
-                <td>x*y*z</td>
-                <td>[0, 1]</td>
-                <td>[x, x+1]</td>
-                <td>[x+y, x+y+1]</td>
-                <td className="ejemplos-desc">Triple integral con límites dependientes</td>
-              </tr>
-              <tr>
-                <td>Triple</td>
-                <td>exp(-x**2-y**2-z**2)</td>
-                <td>[0, 1]</td>
-                <td>[0, 1]</td>
-                <td>[0, 1]</td>
-                <td className="ejemplos-desc">Exponenciales en triple integral</td>
-              </tr>
-            </tbody>
-          </table>
-        </Box>
-        </>
-        )}
+                {tipo === "triple" && (
+                  <>
+                    <div className="row">
+                      <div className="col">
+                        <TextField
+                          label="x inferior"
+                          fullWidth
+                          required
+                          value={txInf}
+                          onChange={e => setTxInf(e.target.value)}
+                          type="number"
+                        />
+                      </div>
+                      <div className="col">
+                        <TextField
+                          label="x superior"
+                          fullWidth
+                          required
+                          value={txSup}
+                          onChange={e => setTxSup(e.target.value)}
+                          type="number"
+                        />
+                      </div>
+                    </div>
+                    <div className="row">
+                      <div className="col">
+                        <TextField
+                          label="y inferior (número o función de x)"
+                          fullWidth
+                          required
+                          value={tyInf}
+                          onChange={e => setTyInf(e.target.value)}
+                          placeholder="ej: 0 o x"
+                        />
+                      </div>
+                      <div className="col">
+                        <TextField
+                          label="y superior (número o función de x)"
+                          fullWidth
+                          required
+                          value={tySup}
+                          onChange={e => setTySup(e.target.value)}
+                          placeholder="ej: 1 o x**2"
+                        />
+                      </div>
+                    </div>
+                    <div className="row">
+                      <div className="col">
+                        <TextField
+                          label="z inferior (número o función de x,y)"
+                          fullWidth
+                          required
+                          value={tzInf}
+                          onChange={e => setTzInf(e.target.value)}
+                          placeholder="ej: 0 o x+y"
+                        />
+                      </div>
+                      <div className="col">
+                        <TextField
+                          label="z superior (número o función de x,y)"
+                          fullWidth
+                          required
+                          value={tzSup}
+                          onChange={e => setTzSup(e.target.value)}
+                          placeholder="ej: 1 o x**2+y"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
-        {error && (
-          <Typography sx={{ mt: 3 }} color="error" align="center">
-            {error}
-          </Typography>
-        )}
-
-        {resultado !== null && (
-          <Box sx={{ mt: 4, textAlign: "center" }} className="resultado-animado">
-            <Typography variant="h5" gutterBottom sx={{ fontFamily: "'Roboto Slab', serif" }}>
-              El resultado de la integral de&nbsp;
-              <b>
-                {tipo === "simple"
-                  ? `f(x) = ${expresion}`
-                  : tipo === "doble"
-                  ? `f(x, y) = ${expresion}`
-                  : `f(x, y, z) = ${expresion}`}
-              </b>
-            </Typography>
-            <Typography variant="body1" gutterBottom sx={{ fontFamily: "'Montserrat',sans-serif" }}>
-              con límites&nbsp;
-              {tipo === "simple"
-                ? `x: [${limiteInf}, ${limiteSup}]`
-                : tipo === "doble"
-                ? `x: [${xInf}, ${xSup}], y: [${yInf}, ${ySup}]`
-                : `x: [${txInf}, ${txSup}], y: [${tyInf}, ${tySup}], z: [${tzInf}, ${tzSup}]`}
-            </Typography>
-            <Typography variant="h4" sx={{ color: "#198754", fontFamily: "'Montserrat',sans-serif" }}>
-              <b>{resultado}</b>
-            </Typography>
-            {graficaUrl && (
-              <Box sx={{ mt: 3, textAlign: "center" }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  Gráfica generada:
-                </Typography>
-                {renderGrafica()}
+                <Button variant="contained" color="primary" type="submit" size="large" sx={{
+                  mt: 2,
+                  background: "linear-gradient(90deg, #005f73 0%, #0a9396 100%)"
+                }}>
+                  Calcular
+                </Button>
               </Box>
-            )}
-            <button className="nuevo" onClick={limpiar} type="button">
-              ¿Desea calcular otra integral?
-            </button>
-          </Box>
-        )}
-      </Paper>
+
+              {error && (
+                <Typography sx={{ mt: 3 }} color="error" align="center">
+                  {error}
+                </Typography>
+              )}
+            </Paper>
+          </div>
+          {/* Panel derecho: manual y ejemplos */}
+          <div className="manual-panel">
+            <ManualDeUso />
+          </div>
+        </div>
+      ) : (
+        // Solo el resultado y la gráfica, centrados
+        <div className="calcu-panel" style={{ margin: "0 auto" }}>
+          <Paper className="app-paper" elevation={8} sx={{ p: 4, background: "rgba(255,255,255,0.95)" }}>
+            <Box sx={{ mt: 4, textAlign: "center" }} className="resultado-animado">
+              <Typography variant="h5" gutterBottom sx={{ fontFamily: "'Roboto Slab', serif" }}>
+                El resultado de la integral de&nbsp;
+                <b>
+                  {tipo === "simple"
+                    ? `f(x) = ${expresion}`
+                    : tipo === "doble"
+                    ? `f(x, y) = ${expresion}`
+                    : `f(x, y, z) = ${expresion}`}
+                </b>
+              </Typography>
+              <Typography variant="body1" gutterBottom sx={{ fontFamily: "'Montserrat',sans-serif" }}>
+                con límites&nbsp;
+                {tipo === "simple"
+                  ? `x: [${limiteInf}, ${limiteSup}]`
+                  : tipo === "doble"
+                  ? `x: [${xInf}, ${xSup}], y: [${yInf}, ${ySup}]`
+                  : `x: [${txInf}, ${txSup}], y: [${tyInf}, ${tySup}], z: [${tzInf}, ${tzSup}]`}
+              </Typography>
+              <Typography variant="h4" sx={{ color: "#198754", fontFamily: "'Montserrat',sans-serif" }}>
+                <b>{resultado}</b>
+              </Typography>
+              {graficaUrl && (
+                <Box sx={{ mt: 3, textAlign: "center" }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Gráfica generada:
+                  </Typography>
+                  {renderGrafica()}
+                </Box>
+              )}
+              <button className="nuevo" onClick={limpiar} type="button">
+                ¿Desea calcular otra integral?
+              </button>
+            </Box>
+          </Paper>
+        </div>
+      )}
     </div>
   );
 }
