@@ -12,6 +12,7 @@ import {
   Typography,
   Paper
 } from "@mui/material";
+import Plot from "react-plotly.js";
 
 // Google Fonts import for Montserrat and Roboto Slab
 const fontLink = document.createElement("link");
@@ -50,7 +51,7 @@ export default function App() {
   const [tzInf, setTzInf] = useState("");
   const [tzSup, setTzSup] = useState("");
   const [resultado, setResultado] = useState<number | null>(null);
-  const [graficaUrl, setGraficaUrl] = useState<string | null>(null);
+  const [graficaUrl, setGraficaUrl] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   const limpiar = () => {
@@ -72,7 +73,6 @@ export default function App() {
     setError(null);
   };
 
-  // Validación simple de igualdad de límites antes de enviar
   function limitesInvalidos(): string | null {
     if (tipo === "simple") {
       if (limiteInf === limiteSup && limiteInf !== "") return "Límites superior e inferior iguales.";
@@ -86,7 +86,6 @@ export default function App() {
     return null;
   }
 
-  // Traducción de errores del backend a mensajes amigables
   function traducirErrorBackend(msg: string): string {
     if (msg.includes("mayor que el superior")) return "El límite inferior es mayor que el superior. Por favor invierte los límites.";
     if (msg.includes("son iguales")) return "Los límites superior e inferior de integración son iguales.";
@@ -144,13 +143,21 @@ export default function App() {
       if (res) {
         setResultado(res.data.resultado);
 
-        setGraficaUrl(
-          res.data.grafica
-            ? res.data.grafica.startsWith("http")
-              ? res.data.grafica
-              : `${BACKEND_URL}/${res.data.grafica.replace(/^\/+/, "")}`
-            : null
-        );
+        // Solo usar startsWith si grafica es string
+        if (res.data.grafica) {
+          if (typeof res.data.grafica === "string") {
+            setGraficaUrl(
+              res.data.grafica.startsWith("http")
+                ? res.data.grafica
+                : `${BACKEND_URL}/${res.data.grafica.replace(/^\/+/, "")}`
+            );
+          } else {
+            // Es un objeto Plotly, guárdalo tal cual
+            setGraficaUrl(res.data.grafica);
+          }
+        } else {
+          setGraficaUrl(null);
+        }
       }
     } catch (err: any) {
       setError(
@@ -160,6 +167,34 @@ export default function App() {
       );
     }
   };
+
+  function renderGrafica() {
+    if (!graficaUrl) return null;
+    if (typeof graficaUrl === "string") {
+      return (
+        <img
+          src={graficaUrl}
+          alt="Gráfica de la integral"
+          style={{
+            maxWidth: "100%",
+            borderRadius: "18px",
+            boxShadow: "0 4px 24px 0 rgba(0,0,0,0.11)",
+          }}
+        />
+      );
+    }
+    if (typeof graficaUrl === "object" && graficaUrl.data) {
+      return (
+        <Plot
+          data={graficaUrl.data}
+          layout={graficaUrl.layout}
+          config={{ responsive: true }}
+          style={{ maxWidth: 700, margin: "0 auto", marginTop: 12 }}
+        />
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="app-center">
@@ -346,7 +381,6 @@ export default function App() {
             Calcular
           </Button>
         </Box>
-        {/* Tabla de ejemplos */}
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6" sx={{ mb: 1, fontFamily: "'Roboto Slab', serif" }}>
             Ejemplos de expresiones y límites:
@@ -443,15 +477,7 @@ export default function App() {
                 <Typography variant="h6" sx={{ mb: 1 }}>
                   Gráfica generada:
                 </Typography>
-                <img
-                  src={graficaUrl}
-                  alt="Gráfica de la integral"
-                  style={{
-                    maxWidth: "100%",
-                    borderRadius: "18px",
-                    boxShadow: "0 4px 24px 0 rgba(0,0,0,0.11)",
-                  }}
-                />
+                {renderGrafica()}
               </Box>
             )}
             <button className="nuevo" onClick={limpiar} type="button">
