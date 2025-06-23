@@ -24,6 +24,8 @@ def parse_math_expr(expr_str: str):
     Permite notación matemática común como 2x, sin x, x^2, etc.
     Lanza excepción si es inválida.
     """
+    if expr_str is None or expr_str.strip() == "":
+        raise ValueError("La expresión está vacía.")
     expr_str = expr_str.replace("^", "**")  # Compatibilidad con ^ como potencia
     try:
         expr = parse_expr(

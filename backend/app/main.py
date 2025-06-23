@@ -46,6 +46,13 @@ class TripleIntegralRequest(BaseModel):
     z_sup: str
     modo_interactivo: bool = True
 
+def parse_limite(valor):
+    # Intenta convertir a float, si no se puede, es una expresión de variable
+    try:
+        return float(valor)
+    except Exception:
+        return str(parse_math_expr(valor))
+
 @app.post("/simple")
 def integral_simple(req: SimpleIntegralRequest):
     try:
@@ -92,16 +99,16 @@ def integral_doble(req: DobleIntegralRequest):
 
         try:
             expr = validar_expr_con_variables(req.expresion, {"x", "y"})
-            y_inf_expr = parse_math_expr(req.y_inf)
-            y_sup_expr = parse_math_expr(req.y_sup)
+            y_inf_expr = parse_limite(req.y_inf)
+            y_sup_expr = parse_limite(req.y_sup)
         except Exception as e:
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión ingresada o en los límites de y. Revisa paréntesis y sintaxis. Detalle: {e}"})
 
         limites = {
             "a": req.x_inf,
             "b": req.x_sup,
-            "c": str(y_inf_expr),
-            "d": str(y_sup_expr)
+            "c": y_inf_expr,
+            "d": y_sup_expr
         }
         resultado = calcular_integral("doble", str(expr), limites)
         if "error" in resultado:
@@ -132,20 +139,20 @@ def integral_triple(req: TripleIntegralRequest):
 
         try:
             expr = validar_expr_con_variables(req.expresion, {"x", "y", "z"})
-            y_inf_expr = parse_math_expr(req.y_inf)
-            y_sup_expr = parse_math_expr(req.y_sup)
-            z_inf_expr = parse_math_expr(req.z_inf)
-            z_sup_expr = parse_math_expr(req.z_sup)
+            y_inf_expr = parse_limite(req.y_inf)
+            y_sup_expr = parse_limite(req.y_sup)
+            z_inf_expr = parse_limite(req.z_inf)
+            z_sup_expr = parse_limite(req.z_sup)
         except Exception as e:
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión ingresada o en los límites de y/z. Revisa paréntesis y sintaxis. Detalle: {e}"})
 
         limites = {
             "a": req.x_inf,
             "b": req.x_sup,
-            "c": str(y_inf_expr),
-            "d": str(y_sup_expr),
-            "e": str(z_inf_expr),
-            "f": str(z_sup_expr)
+            "c": y_inf_expr,
+            "d": y_sup_expr,
+            "e": z_inf_expr,
+            "f": z_sup_expr
         }
         resultado = calcular_integral("triple", str(expr), limites)
         if "error" in resultado:
