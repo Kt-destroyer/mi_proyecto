@@ -200,6 +200,7 @@ def calcular_integral(tipo: str, expresion: str, limites: dict, metodo: str = "s
             f_expr = limites["f"]
             f = sp.lambdify((x, y, z), expr, modules=["numpy"])
 
+            # FIX: Manejar correctamente los límites funcionales para integración triple
             if isinstance(c_expr, str):
                 y_inf_func = sp.lambdify(x, parse_math_expr(c_expr), modules=["numpy"])
             else:
@@ -211,12 +212,12 @@ def calcular_integral(tipo: str, expresion: str, limites: dict, metodo: str = "s
                 y_sup_func = lambda x: float(d_expr)
 
             if isinstance(e_expr, str):
-                z_inf_func = sp.lambdify([x, y], parse_math_expr(e_expr), modules=["numpy"])
+                z_inf_func = sp.lambdify((x, y), parse_math_expr(e_expr), modules=["numpy"])
             else:
                 z_inf_func = lambda x, y: float(e_expr)
 
             if isinstance(f_expr, str):
-                z_sup_func = sp.lambdify([x, y], parse_math_expr(f_expr), modules=["numpy"])
+                z_sup_func = sp.lambdify((x, y), parse_math_expr(f_expr), modules=["numpy"])
             else:
                 z_sup_func = lambda x, y: float(f_expr)
 
@@ -225,6 +226,7 @@ def calcular_integral(tipo: str, expresion: str, limites: dict, metodo: str = "s
                     f, a, b, y_inf_func, y_sup_func, z_inf_func, z_sup_func, nx=10, ny=10, nz=10
                 )
             elif metodo == "scipy" and SCIPY_AVAILABLE:
+                # FIX: nquad requiere que los límites internos sean funciones correctamente anidadas
                 def scipy_integrand(z_, y_, x_):
                     return f(x_, y_, z_)
                 resultado, err = nquad(

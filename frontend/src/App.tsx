@@ -141,9 +141,10 @@ export default function App() {
         });
       }
       if (res) {
-        setResultado(res.data.resultado);
+        // FIX: Obtener el resultado numérico desde "valor" (no "resultado")
+        setResultado(res.data.valor !== undefined ? res.data.valor : null);
 
-        // Solo usar startsWith si grafica es string
+        // Gráfica
         if (res.data.grafica) {
           if (typeof res.data.grafica === "string") {
             setGraficaUrl(
@@ -152,7 +153,6 @@ export default function App() {
                 : `${BACKEND_URL}/${res.data.grafica.replace(/^\/+/, "")}`
             );
           } else {
-            // Es un objeto Plotly, guárdalo tal cual
             setGraficaUrl(res.data.grafica);
           }
         } else {
@@ -179,18 +179,28 @@ export default function App() {
             maxWidth: "100%",
             borderRadius: "18px",
             boxShadow: "0 4px 24px 0 rgba(0,0,0,0.11)",
+            marginTop: 10,
           }}
         />
       );
     }
     if (typeof graficaUrl === "object" && graficaUrl.data) {
+      // FIX: Forzar tamaño responsivo y correcto para que no se salga del cuadro
       return (
-        <Plot
-          data={graficaUrl.data}
-          layout={graficaUrl.layout}
-          config={{ responsive: true }}
-          style={{ maxWidth: 700, margin: "0 auto", marginTop: 12 }}
-        />
+        <div style={{ width: "100%", maxWidth: 700, margin: "0 auto", marginTop: 12, overflow: "auto" }}>
+          <Plot
+            data={graficaUrl.data}
+            layout={{
+              ...graficaUrl.layout,
+              autosize: true,
+              width: "100%",
+              height: 400,
+              margin: { l: 40, r: 40, b: 40, t: 40 },
+            }}
+            config={{ responsive: true }}
+            style={{ width: "100%", height: 400, minHeight: 360 }}
+          />
+        </div>
       );
     }
     return null;

@@ -55,6 +55,24 @@ def _get_float_limit(val, x=None, y=None):
         pass
     return None # fallback
 
+def _parse_limit_func(expr, vars_):
+    # Devuelve una función de las variables vars_ a partir de una expresión string o numérica
+    if isinstance(expr, (float, int)):
+        return lambda *args: float(expr)
+    elif isinstance(expr, str):
+        try:
+            return sp.lambdify(vars_, parse_expr(expr, local_dict=sympy_func_dict), modules="numpy")
+        except Exception:
+            # Si no es función, intenta forzar a float
+            try:
+                return lambda *args: float(expr)
+            except Exception:
+                raise
+    elif callable(expr):
+        return expr
+    else:
+        raise ValueError("No se pudo convertir el límite a función.")
+
 def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: bool = True):
     """
     Si modo_interactivo=True, retorna dict Plotly para frontend.
@@ -106,42 +124,35 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
         fxy = sp.lambdify((x, y), expr, modules="numpy")
         x_inf = _get_float_limit(limites["a"])
         x_sup = _get_float_limit(limites["b"])
-        y_inf = limites["c"]
-        y_sup = limites["d"]
+        y_inf_func = _parse_limit_func(limites["c"], [x])
+        y_sup_func = _parse_limit_func(limites["d"], [x])
 
-        # Si los límites son strings, evalúa como float (constantes). Si son funciones, usa extremos.
-        if isinstance(y_inf, str):
+        # Para cada x en la grilla, calcula los límites funcionales de y
+        nx, ny = 40, 40
+        X = np.linspace(x_inf, x_sup, nx)
+        Y = np.zeros((ny, nx))
+        Z = np.zeros((ny, nx))
+        for ix, xv in enumerate(X):
+            y_min = y_inf_func(xv)
+            y_max = y_sup_func(xv)
+            # Si los límites son inválidos, rellena con nan
+            if y_max <= y_min:
+                Y[:, ix] = np.nan
+                Z[:, ix] = np.nan
+                continue
+            Y[:, ix] = np.linspace(y_min, y_max, ny)
             try:
-                y_inf_eval = float(y_inf)
+                Z[:, ix] = fxy(xv, Y[:, ix])
             except Exception:
-                y_inf_func = sp.lambdify(x, parse_expr(y_inf, local_dict=sympy_func_dict), modules="numpy")
-                y_inf_eval = y_inf_func(x_inf)
-        else:
-            y_inf_eval = float(y_inf)
-        if isinstance(y_sup, str):
-            try:
-                y_sup_eval = float(y_sup)
-            except Exception:
-                y_sup_func = sp.lambdify(x, parse_expr(y_sup, local_dict=sympy_func_dict), modules="numpy")
-                y_sup_eval = y_sup_func(x_sup)
-        else:
-            y_sup_eval = float(y_sup)
-
-        X = np.linspace(x_inf, x_sup, 60)
-        Y = np.linspace(y_inf_eval, y_sup_eval, 60)
-        XX, YY = np.meshgrid(X, Y)
-        try:
-            Z = fxy(XX, YY)
-        except Exception:
-            Z = np.zeros_like(XX)
+                Z[:, ix] = np.nan
 
         if not _valida_arreglo_json(Z):
             raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
 
         if modo_interactivo:
-            fig = go.Figure(data=[go.Surface(z=Z, x=XX, y=YY, colorbar_title='f(x, y)')])
+            fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorbar_title='f(x, y)')])
             fig.update_layout(
-                title=f"Integral doble de {sp.latex(expr)} en x:[{x_inf},{x_sup}], y:[{y_inf_eval},{y_sup_eval}]",
+                title=f"Integral doble de {sp.latex(expr)} en x:[{x_inf},{x_sup}], y:funcional",
                 scene=dict(
                     xaxis_title="x",
                     yaxis_title="y",
@@ -156,7 +167,7 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
             import matplotlib.pyplot as plt
             fig = plt.figure(figsize=(8,6))
             ax = fig.add_subplot(111, projection='3d')
-            ax.plot_surface(XX, YY, Z, cmap='viridis', edgecolor='none')
+            ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none')
             ax.set_title(f"Integral doble de ${sp.latex(expr)}$")
             ax.set_xlabel('x')
             ax.set_ylabel('y')
@@ -167,74 +178,50 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
             return ruta
 
     elif tipo == "triple":
-        # Normalmente no se puede graficar 4D, pero mostramos una suma en cubo
+        # Mostramos para cada (x, y) la suma sobre z respetando límites funcionales
         expr = sp.sympify(expresion, locals=sympy_func_dict)
         expr = _asegura_escalar(expr)
         fxyz = sp.lambdify((x, y, z), expr, modules="numpy")
 
         x_inf = _get_float_limit(limites["a"])
         x_sup = _get_float_limit(limites["b"])
-        y_inf = limites["c"]
-        y_sup = limites["d"]
-        z_inf = limites["e"]
-        z_sup = limites["f"]
+        y_inf_func = _parse_limit_func(limites["c"], [x])
+        y_sup_func = _parse_limit_func(limites["d"], [x])
+        z_inf_func = _parse_limit_func(limites["e"], [x, y])
+        z_sup_func = _parse_limit_func(limites["f"], [x, y])
 
-        if isinstance(y_inf, str):
-            try:
-                y_inf_eval = float(y_inf)
-            except Exception:
-                y_inf_func = sp.lambdify(x, parse_expr(y_inf, local_dict=sympy_func_dict), modules="numpy")
-                y_inf_eval = y_inf_func(x_inf)
-        else:
-            y_inf_eval = float(y_inf)
-        if isinstance(y_sup, str):
-            try:
-                y_sup_eval = float(y_sup)
-            except Exception:
-                y_sup_func = sp.lambdify(x, parse_expr(y_sup, local_dict=sympy_func_dict), modules="numpy")
-                y_sup_eval = y_sup_func(x_sup)
-        else:
-            y_sup_eval = float(y_sup)
+        nx, ny, nz = 15, 15, 15
+        X = np.linspace(x_inf, x_sup, nx)
+        Y = np.zeros((ny, nx))
+        S = np.zeros((ny, nx))
+        for ix, xv in enumerate(X):
+            y_min = y_inf_func(xv)
+            y_max = y_sup_func(xv)
+            if y_max <= y_min:
+                Y[:, ix] = np.nan
+                S[:, ix] = np.nan
+                continue
+            Y[:, ix] = np.linspace(y_min, y_max, ny)
+            for iy, yv in enumerate(Y[:, ix]):
+                z_min = z_inf_func(xv, yv)
+                z_max = z_sup_func(xv, yv)
+                if z_max <= z_min:
+                    S[iy, ix] = np.nan
+                    continue
+                Z = np.linspace(z_min, z_max, nz)
+                try:
+                    vals = fxyz(xv, yv, Z)
+                    S[iy, ix] = np.nansum(vals)
+                except Exception:
+                    S[iy, ix] = np.nan
 
-        if isinstance(z_inf, str):
-            try:
-                z_inf_eval = float(z_inf)
-            except Exception:
-                z_inf_func = sp.lambdify([x, y], parse_expr(z_inf, local_dict=sympy_func_dict), modules="numpy")
-                z_inf_eval = z_inf_func(x_inf, y_inf_eval)
-        else:
-            z_inf_eval = float(z_inf)
-        if isinstance(z_sup, str):
-            try:
-                z_sup_eval = float(z_sup)
-            except Exception:
-                z_sup_func = sp.lambdify([x, y], parse_expr(z_sup, local_dict=sympy_func_dict), modules="numpy")
-                z_sup_eval = z_sup_func(x_sup, y_sup_eval)
-        else:
-            z_sup_eval = float(z_sup)
-
-        X = np.linspace(x_inf, x_sup, 15)
-        Y = np.linspace(y_inf_eval, y_sup_eval, 15)
-        Z = np.linspace(z_inf_eval, z_sup_eval, 15)
-
-        # Para visualizar algo: sumamos f(x, y, z) para cada xy como "colormap"
-        XX, YY = np.meshgrid(X, Y)
-        try:
-            vals = np.zeros_like(XX)
-            for i in range(len(X)):
-                for j in range(len(Y)):
-                    fz = [fxyz(X[i], Y[j], zz) for zz in Z]
-                    vals[j, i] = np.sum(fz)
-        except Exception:
-            vals = np.zeros_like(XX)
-
-        if not _valida_arreglo_json(vals):
-            raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
+        if not _valida_arreglo_json(S):
+            raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia los límites o la función.")
 
         if modo_interactivo:
-            fig = go.Figure(data=[go.Surface(z=vals, x=XX, y=YY, colorbar_title='∫ f(x, y, z) dz')])
+            fig = go.Figure(data=[go.Surface(z=S, x=X, y=Y, colorbar_title='∫ f(x, y, z) dz')])
             fig.update_layout(
-                title=f"Triple integral (suma sobre z) de {sp.latex(expr)}",
+                title=f"Triple integral (suma sobre z) de {sp.latex(expr)} (respetando límites funcionales)",
                 scene=dict(
                     xaxis_title="x",
                     yaxis_title="y",
@@ -249,7 +236,7 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
             import matplotlib.pyplot as plt
             fig = plt.figure(figsize=(8,6))
             ax = fig.add_subplot(111, projection='3d')
-            ax.plot_surface(XX, YY, vals, cmap='plasma', edgecolor='none')
+            ax.plot_surface(X, Y, S, cmap='plasma', edgecolor='none')
             ax.set_title(f"Triple integral (suma sobre z) de ${sp.latex(expr)}$")
             ax.set_xlabel('x')
             ax.set_ylabel('y')
