@@ -9,13 +9,15 @@ html, body, #root {
 body {
   position: relative;
   min-height: 100vh;
-  
+  /* Elimina el color de fondo sólido para que se vea la imagen */
+  background: none !important;
   background-image: url('https://cursodeinstalador.com/wp-content/uploads/2024/06/academica-ofrece-curso-gratuito-la-integral-definida-en-calculo-integral-1.jpg');
   background-size: cover;
   background-repeat: no-repeat;
   background-attachment: fixed;
   background-position: center center;
   font-family: 'Montserrat', 'Roboto Slab', Arial, sans-serif;
+  z-index: 0;
 }
 
 /* Quita cualquier capa oscura sobre el fondo */
