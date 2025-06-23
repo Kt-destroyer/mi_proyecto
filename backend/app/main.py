@@ -1,5 +1,4 @@
 import os
-import re
 import math
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,7 +54,6 @@ def integral_simple(req: SimpleIntegralRequest):
         if req.limite_inf > req.limite_sup:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior es mayor que el superior. Por favor invierte los límites."})
 
-        # --- Validación y parseo robusto de la expresión ---
         try:
             expr = validar_expr_con_variables(req.expresion, {"x"})
         except Exception as e:
@@ -78,7 +76,7 @@ def integral_simple(req: SimpleIntegralRequest):
             grafica = generar_grafica("simple", str(expr), limites, modo_interactivo=req.modo_interactivo)
         except Exception as e:
             print("Error al graficar:", e)
-            return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar: {e}"})
+            grafica = ""
         return {"valor": valor, "grafica": grafica}
     except Exception as e:
         print("Error en el endpoint simple:", e)
@@ -92,7 +90,6 @@ def integral_doble(req: DobleIntegralRequest):
         if req.x_inf > req.x_sup:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior de x es mayor que el superior. Por favor invierte los límites."})
 
-        # --- Validación y parseo robusto de la expresión ---
         try:
             expr = validar_expr_con_variables(req.expresion, {"x", "y"})
             y_inf_expr = parse_math_expr(req.y_inf)
@@ -119,7 +116,7 @@ def integral_doble(req: DobleIntegralRequest):
             grafica = generar_grafica("doble", str(expr), limites, modo_interactivo=req.modo_interactivo)
         except Exception as e:
             print("Error al graficar doble:", e)
-            return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 2D): {e}"})
+            grafica = ""
         return {"valor": valor, "grafica": grafica}
     except Exception as e:
         print("Error inesperado en el endpoint doble:", e)
@@ -133,7 +130,6 @@ def integral_triple(req: TripleIntegralRequest):
         if req.x_inf > req.x_sup:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior de x es mayor que el superior. Por favor invierte los límites."})
 
-        # --- Validación y parseo robusto de la expresión ---
         try:
             expr = validar_expr_con_variables(req.expresion, {"x", "y", "z"})
             y_inf_expr = parse_math_expr(req.y_inf)
@@ -164,7 +160,7 @@ def integral_triple(req: TripleIntegralRequest):
             grafica = generar_grafica("triple", str(expr), limites, modo_interactivo=req.modo_interactivo)
         except Exception as e:
             print("Error al graficar triple:", e)
-            return JSONResponse(status_code=400, content={"detail": f"No se pudo graficar (región 3D): {e}"})
+            grafica = ""
         return {"valor": valor, "grafica": grafica}
     except Exception as e:
         print("Error inesperado en el endpoint triple:", e)
