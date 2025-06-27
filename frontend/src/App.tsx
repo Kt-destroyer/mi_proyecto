@@ -312,7 +312,8 @@ export default function App() {
         <div className="contenedor-flex">
           {/* Panel izquierdo: calculadora */}
           <div className="calcu-panel">
-            <Paper className="app-paper" elevation={8} sx={{ p: 4, background: "rgba(255,255,255,0.95)" }}>
+            {/* ¡AQUÍ papel sin fondo! */}
+            <Paper className="app-paper" elevation={8} sx={{ p: 4, background: "transparent" }}>
               <Typography variant="h4" fontWeight={700} gutterBottom align="center" sx={{ fontFamily: "'Roboto Slab', serif" }}>
                 Calculadora de Integrales
               </Typography>
@@ -509,7 +510,8 @@ export default function App() {
       ) : (
         // Solo el resultado y la gráfica, centrados
         <div className="calcu-panel" style={{ margin: "0 auto" }}>
-          <Paper className="app-paper" elevation={8} sx={{ p: 4, background: "rgba(255,255,255,0.95)" }}>
+          {/* ¡AQUÍ papel sin fondo! */}
+          <Paper className="app-paper" elevation={8} sx={{ p: 4, background: "transparent" }}>
             <Box sx={{ mt: 4, textAlign: "center" }} className="resultado-animado">
               <Typography variant="h5" gutterBottom sx={{ fontFamily: "'Roboto Slab', serif" }}>
                 El resultado de la integral de&nbsp;

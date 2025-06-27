@@ -12,6 +12,14 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Asegura que el fondo ocupe toda la pantalla y elimina cualquier restricción */
+html, body, #root {
+  height: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
 /* Elimina el background-color oscuro de :root y del body */
 
 a {
@@ -24,10 +32,9 @@ a:hover {
 }
 
 body {
+  /* Ya no necesitas min-width/min-height aquí, está en html/body/#root arriba */
   margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  /* display: flex; place-items: center; <-- ¡Elimina esto! */
+  padding: 0;
 }
 
 h1 {
