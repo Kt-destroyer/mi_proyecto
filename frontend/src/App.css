@@ -63,7 +63,7 @@ body::before {
 }
 
 .calcu-panel, .manual-panel {
-  background: rgba(255,255,255,0.97);
+  background: rgba(255,255,255,0.85); /* Menor opacidad para ver la imagen */
   border-radius: 28px;
   box-shadow: 0 8px 44px 0 rgba(0,0,0,0.08);
   padding: 38px 36px 34px 36px;
