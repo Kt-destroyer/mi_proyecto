@@ -4,6 +4,7 @@ import sympy
 import sympy as sp
 from sympy.parsing.sympy_parser import parse_expr
 import plotly.graph_objs as go
+import traceback
 
 # Diccionario extendido para funciones matemáticas (debes mantener igual que en math_parser.py)
 sympy_func_dict = {
@@ -76,175 +77,183 @@ def _parse_limit_func(expr, vars_):
 def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: bool = True):
     """
     Si modo_interactivo=True, retorna dict Plotly para frontend.
-    Si modo_interactivo=False, sigue generando PNG (matplotlib).
+    Si modo_interactivo=False, genera PNG (matplotlib) con estilo profesional.
     """
+    print("DEBUG: Entrando a generar_grafica")
+    print(f"Tipo: {tipo}, Expresión: {expresion}, Límites: {limites}, Modo interactivo: {modo_interactivo}")
+
     os.makedirs("static/graficas", exist_ok=True)
     ruta = f"static/graficas/integral_{tipo}_{hash(str(expresion)+str(limites))}.png"
     x, y, z = sp.symbols('x y z')
 
-    if tipo == "simple":
-        expr = sp.sympify(expresion, locals=sympy_func_dict)
-        expr = _asegura_escalar(expr)
-        f = sp.lambdify(x, expr, modules="numpy")
-        x_vals = np.linspace(limites["a"], limites["b"], 500)
-        y_vals = f(x_vals)
-        if not _valida_arreglo_json(y_vals):
-            raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
+    try:
+        if tipo == "simple":
+            expr = sp.sympify(expresion, locals=sympy_func_dict)
+            expr = _asegura_escalar(expr)
+            f = sp.lambdify(x, expr, modules="numpy")
+            x_vals = np.linspace(limites["a"], limites["b"], 500)
+            y_vals = f(x_vals)
+            if not _valida_arreglo_json(y_vals):
+                raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
 
-        if modo_interactivo:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', fill='tozeroy', name="f(x)"))
-            fig.update_layout(
-                title=f"Integral de {sp.latex(expr)} entre {limites['a']} y {limites['b']}",
-                xaxis_title="x", yaxis_title="f(x)",
-                template="plotly_white"
-            )
-            return fig.to_dict()
-        else:
-            import matplotlib
-            matplotlib.use('Agg')
-            import matplotlib.pyplot as plt
-            if np.isscalar(y_vals):
-                y_vals = np.full_like(x_vals, y_vals)
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(x_vals, y_vals, 'b-', linewidth=2)
-            ax.fill_between(x_vals, y_vals, alpha=0.3)
-            ax.set_title(f"Integral de ${sp.latex(expr)}$ entre {limites['a']} y {limites['b']}")
-            ax.set_xlabel("x")
-            ax.set_ylabel("f(x)")
-            ax.grid(True)
-            plt.tight_layout()
-            plt.savefig(ruta)
-            plt.close(fig)
-            return ruta
+            if modo_interactivo:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', fill='tozeroy', name="f(x)"))
+                fig.update_layout(
+                    title=f"Integral de {expresion} entre {limites['a']} y {limites['b']}",
+                    xaxis_title="x", yaxis_title="f(x)",
+                    template="plotly_white"
+                )
+                return fig.to_dict()
+            else:
+                import matplotlib
+                matplotlib.use('Agg')
+                import matplotlib.pyplot as plt
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.plot(x_vals, y_vals, 'b-', linewidth=2)
+                ax.fill_between(x_vals, y_vals, alpha=0.3)
+                ax.set_title(r'Visualización de $f(x) = %s$' % sp.latex(expr), fontsize=18, pad=20)
+                ax.set_xlabel('x', fontsize=14, labelpad=10)
+                ax.set_ylabel('f(x)', fontsize=14, labelpad=10)
+                ax.grid(True)
+                plt.tight_layout()
+                plt.savefig(ruta, dpi=200, bbox_inches='tight')
+                plt.close(fig)
+                return ruta
 
-    elif tipo == "doble":
-        expr = sp.sympify(expresion, locals=sympy_func_dict)
-        expr = _asegura_escalar(expr)
-        fxy = sp.lambdify((x, y), expr, modules="numpy")
-        x_inf = _get_float_limit(limites["a"])
-        x_sup = _get_float_limit(limites["b"])
-        y_inf_func = _parse_limit_func(limites["c"], [x])
-        y_sup_func = _parse_limit_func(limites["d"], [x])
+        elif tipo == "doble":
+            expr = sp.sympify(expresion, locals=sympy_func_dict)
+            expr = _asegura_escalar(expr)
+            fxy = sp.lambdify((x, y), expr, modules="numpy")
+            x_inf = _get_float_limit(limites["a"])
+            x_sup = _get_float_limit(limites["b"])
+            y_inf_func = _parse_limit_func(limites["c"], [x])
+            y_sup_func = _parse_limit_func(limites["d"], [x])
 
-        # Para cada x en la grilla, calcula los límites funcionales de y
-        nx, ny = 40, 40
-        X = np.linspace(x_inf, x_sup, nx)
-        Y = np.zeros((ny, nx))
-        Z = np.zeros((ny, nx))
-        for ix, xv in enumerate(X):
-            y_min = y_inf_func(xv)
-            y_max = y_sup_func(xv)
-            # Si los límites son inválidos, rellena con nan
-            if y_max <= y_min:
-                Y[:, ix] = np.nan
-                Z[:, ix] = np.nan
-                continue
-            Y[:, ix] = np.linspace(y_min, y_max, ny)
-            try:
-                Z[:, ix] = fxy(xv, Y[:, ix])
-            except Exception:
-                Z[:, ix] = np.nan
-
-        if not _valida_arreglo_json(Z):
-            raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
-
-        if modo_interactivo:
-            fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorbar_title='f(x, y)')])
-            fig.update_layout(
-                title=f"Integral doble de {sp.latex(expr)} en x:[{x_inf},{x_sup}], y:funcional",
-                scene=dict(
-                    xaxis_title="x",
-                    yaxis_title="y",
-                    zaxis_title="f(x, y)"
-                ),
-                template="plotly_white"
-            )
-            return fig.to_dict()
-        else:
-            import matplotlib
-            matplotlib.use('Agg')
-            import matplotlib.pyplot as plt
-            fig = plt.figure(figsize=(8,6))
-            ax = fig.add_subplot(111, projection='3d')
-            ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none')
-            ax.set_title(f"Integral doble de ${sp.latex(expr)}$")
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('f(x, y)')
-            plt.tight_layout()
-            plt.savefig(ruta)
-            plt.close(fig)
-            return ruta
-
-    elif tipo == "triple":
-        # Mostramos para cada (x, y) la suma sobre z respetando límites funcionales
-        expr = sp.sympify(expresion, locals=sympy_func_dict)
-        expr = _asegura_escalar(expr)
-        fxyz = sp.lambdify((x, y, z), expr, modules="numpy")
-
-        x_inf = _get_float_limit(limites["a"])
-        x_sup = _get_float_limit(limites["b"])
-        y_inf_func = _parse_limit_func(limites["c"], [x])
-        y_sup_func = _parse_limit_func(limites["d"], [x])
-        z_inf_func = _parse_limit_func(limites["e"], [x, y])
-        z_sup_func = _parse_limit_func(limites["f"], [x, y])
-
-        nx, ny, nz = 15, 15, 15
-        X = np.linspace(x_inf, x_sup, nx)
-        Y = np.zeros((ny, nx))
-        S = np.zeros((ny, nx))
-        for ix, xv in enumerate(X):
-            y_min = y_inf_func(xv)
-            y_max = y_sup_func(xv)
-            if y_max <= y_min:
-                Y[:, ix] = np.nan
-                S[:, ix] = np.nan
-                continue
-            Y[:, ix] = np.linspace(y_min, y_max, ny)
-            for iy, yv in enumerate(Y[:, ix]):
-                z_min = z_inf_func(xv, yv)
-                z_max = z_sup_func(xv, yv)
-                if z_max <= z_min:
-                    S[iy, ix] = np.nan
+            nx, ny = 40, 40
+            X = np.linspace(x_inf, x_sup, nx)
+            Y = np.zeros((ny, nx))
+            Z = np.zeros((ny, nx))
+            for ix, xv in enumerate(X):
+                y_min = y_inf_func(xv)
+                y_max = y_sup_func(xv)
+                if y_max <= y_min:
+                    Y[:, ix] = np.nan
+                    Z[:, ix] = np.nan
                     continue
-                Z = np.linspace(z_min, z_max, nz)
+                Y[:, ix] = np.linspace(y_min, y_max, ny)
                 try:
-                    vals = fxyz(xv, yv, Z)
-                    S[iy, ix] = np.nansum(vals)
-                except Exception:
-                    S[iy, ix] = np.nan
+                    Z[:, ix] = fxy(xv, Y[:, ix])
+                except Exception as e:
+                    print("Error en Z[:, ix] = fxy(xv, Y[:, ix])", e)
+                    Z[:, ix] = np.nan
 
-        if not _valida_arreglo_json(S):
-            raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia los límites o la función.")
+            if not _valida_arreglo_json(Z):
+                raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
 
-        if modo_interactivo:
-            fig = go.Figure(data=[go.Surface(z=S, x=X, y=Y, colorbar_title='∫ f(x, y, z) dz')])
-            fig.update_layout(
-                title=f"Triple integral (suma sobre z) de {sp.latex(expr)} (respetando límites funcionales)",
-                scene=dict(
-                    xaxis_title="x",
-                    yaxis_title="y",
-                    zaxis_title="Suma f(x, y, z)"
-                ),
-                template="plotly_white"
-            )
-            return fig.to_dict()
+            if modo_interactivo:
+                fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorbar_title='f(x, y)')])
+                fig.update_layout(
+                    title=f"Integral doble de {expresion} en x:[{x_inf},{x_sup}], y:funcional",
+                    scene=dict(
+                        xaxis_title="x",
+                        yaxis_title="y",
+                        zaxis_title="f(x, y)"
+                    ),
+                    template="plotly_white"
+                )
+                return fig.to_dict()
+            else:
+                import matplotlib
+                matplotlib.use('Agg')
+                import matplotlib.pyplot as plt
+                fig = plt.figure(figsize=(8, 6))
+                ax = fig.add_subplot(111, projection='3d')
+                surf = ax.plot_surface(X, Y, Z, cmap='plasma', edgecolor='k', linewidth=0.5, antialiased=True)
+                ax.set_title(r'Visualización del volumen bajo $f(x, y) = %s$' % sp.latex(expr), fontsize=18, pad=20)
+                ax.set_xlabel('x', fontsize=14, labelpad=10)
+                ax.set_ylabel('y', fontsize=14, labelpad=10)
+                ax.set_zlabel('z', fontsize=14, labelpad=10)
+                fig.colorbar(surf, shrink=0.7, aspect=15, pad=0.1)
+                plt.tight_layout()
+                plt.savefig(ruta, dpi=200, bbox_inches='tight')
+                plt.close(fig)
+                return ruta
+
+        elif tipo == "triple":
+            expr = sp.sympify(expresion, locals=sympy_func_dict)
+            expr = _asegura_escalar(expr)
+            fxyz = sp.lambdify((x, y, z), expr, modules="numpy")
+
+            x_inf = _get_float_limit(limites["a"])
+            x_sup = _get_float_limit(limites["b"])
+            y_inf_func = _parse_limit_func(limites["c"], [x])
+            y_sup_func = _parse_limit_func(limites["d"], [x])
+            z_inf_func = _parse_limit_func(limites["e"], [x, y])
+            z_sup_func = _parse_limit_func(limites["f"], [x, y])
+
+            nx, ny, nz = 15, 15, 15
+            X = np.linspace(x_inf, x_sup, nx)
+            Y = np.zeros((ny, nx))
+            S = np.zeros((ny, nx))
+            for ix, xv in enumerate(X):
+                y_min = y_inf_func(xv)
+                y_max = y_sup_func(xv)
+                if y_max <= y_min:
+                    Y[:, ix] = np.nan
+                    S[:, ix] = np.nan
+                    continue
+                Y[:, ix] = np.linspace(y_min, y_max, ny)
+                for iy, yv in enumerate(Y[:, ix]):
+                    z_min = z_inf_func(xv, yv)
+                    z_max = z_sup_func(xv, yv)
+                    if z_max <= z_min:
+                        S[iy, ix] = np.nan
+                        continue
+                    Z = np.linspace(z_min, z_max, nz)
+                    try:
+                        vals = fxyz(xv, yv, Z)
+                        S[iy, ix] = np.nansum(vals)
+                    except Exception as e:
+                        print("Error en S[iy, ix] = np.nansum(vals):", e)
+                        S[iy, ix] = np.nan
+
+            if not _valida_arreglo_json(S):
+                raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia los límites o la función.")
+
+            if modo_interactivo:
+                fig = go.Figure(data=[go.Surface(z=S, x=X, y=Y, colorbar_title='∫ f(x, y, z) dz')])
+                fig.update_layout(
+                    title=f"Triple integral (suma sobre z) de {expresion} (respetando límites funcionales)",
+                    scene=dict(
+                        xaxis_title="x",
+                        yaxis_title="y",
+                        zaxis_title="Suma f(x, y, z)"
+                    ),
+                    template="plotly_white"
+                )
+                return fig.to_dict()
+            else:
+                import matplotlib
+                matplotlib.use('Agg')
+                import matplotlib.pyplot as plt
+                fig = plt.figure(figsize=(8, 6))
+                ax = fig.add_subplot(111, projection='3d')
+                surf = ax.plot_surface(X, Y, S, cmap='plasma', edgecolor='k', linewidth=0.5, antialiased=True)
+                ax.set_title(r'Visualización del volumen bajo $\int f(x, y, z)\,dz$ de %s' % sp.latex(expr), fontsize=16, pad=20)
+                ax.set_xlabel('x', fontsize=14, labelpad=10)
+                ax.set_ylabel('y', fontsize=14, labelpad=10)
+                ax.set_zlabel('Suma f(x, y, z)', fontsize=14, labelpad=10)
+                fig.colorbar(surf, shrink=0.7, aspect=15, pad=0.1)
+                plt.tight_layout()
+                plt.savefig(ruta, dpi=200, bbox_inches='tight')
+                plt.close(fig)
+                return ruta
+
         else:
-            import matplotlib
-            matplotlib.use('Agg')
-            import matplotlib.pyplot as plt
-            fig = plt.figure(figsize=(8,6))
-            ax = fig.add_subplot(111, projection='3d')
-            ax.plot_surface(X, Y, S, cmap='plasma', edgecolor='none')
-            ax.set_title(f"Triple integral (suma sobre z) de ${sp.latex(expr)}$")
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('Suma f(x, y, z)')
-            plt.tight_layout()
-            plt.savefig(ruta)
-            plt.close(fig)
-            return ruta
+            raise ValueError(f"Tipo de integral no soportado para graficar: {tipo}")
 
-    else:
-        raise ValueError(f"Tipo de integral no soportado para graficar: {tipo}")
+    except Exception as e:
+        print("Error en generar_grafica:", e)
+        traceback.print_exc()
+        return ""
