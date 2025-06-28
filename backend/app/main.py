@@ -26,7 +26,6 @@ class SimpleIntegralRequest(BaseModel):
     expresion: str
     limite_inf: float
     limite_sup: float
-    modo_interactivo: bool = True
 
 class DobleIntegralRequest(BaseModel):
     expresion: str
@@ -34,7 +33,6 @@ class DobleIntegralRequest(BaseModel):
     x_sup: float
     y_inf: str
     y_sup: str
-    modo_interactivo: bool = True
 
 class TripleIntegralRequest(BaseModel):
     expresion: str
@@ -44,7 +42,6 @@ class TripleIntegralRequest(BaseModel):
     y_sup: str
     z_inf: str
     z_sup: str
-    modo_interactivo: bool = True
 
 def parse_limite(valor):
     # Intenta convertir a float, si no se puede, es una expresión de variable
@@ -52,6 +49,7 @@ def parse_limite(valor):
         return float(valor)
     except Exception:
         return str(parse_math_expr(valor))
+
 
 @app.post("/simple")
 def integral_simple(req: SimpleIntegralRequest):
@@ -80,11 +78,17 @@ def integral_simple(req: SimpleIntegralRequest):
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
         try:
-            grafica = generar_grafica("simple", str(expr), limites, modo_interactivo=req.modo_interactivo)
+            # Siempre genera gráfica estática (matplotlib)
+            grafica = generar_grafica("simple", str(expr), limites)
         except Exception as e:
             print("Error al graficar:", e)
             grafica = ""
-        return {"valor": valor, "grafica": grafica}
+        # Solo acepta imágenes PNG como respuesta
+        if isinstance(grafica, str) and (grafica.endswith(".png") or grafica.startswith("http")):
+            grafica_out = grafica
+        else:
+            grafica_out = None
+        return {"valor": valor, "grafica": grafica_out}
     except Exception as e:
         print("Error en el endpoint simple:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
@@ -120,11 +124,15 @@ def integral_doble(req: DobleIntegralRequest):
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
         try:
-            grafica = generar_grafica("doble", str(expr), limites, modo_interactivo=req.modo_interactivo)
+            grafica = generar_grafica("doble", str(expr), limites)
         except Exception as e:
             print("Error al graficar doble:", e)
             grafica = ""
-        return {"valor": valor, "grafica": grafica}
+        if isinstance(grafica, str) and (grafica.endswith(".png") or grafica.startswith("http")):
+            grafica_out = grafica
+        else:
+            grafica_out = None
+        return {"valor": valor, "grafica": grafica_out}
     except Exception as e:
         print("Error inesperado en el endpoint doble:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
@@ -163,14 +171,16 @@ def integral_triple(req: TripleIntegralRequest):
             return JSONResponse(status_code=400, content={
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
-        grafica = ""
         try:
-            # Intenta generar la gráfica, pero si falla, sigue mostrando el resultado
-            grafica = generar_grafica("triple", str(expr), limites, modo_interactivo=req.modo_interactivo)
+            grafica = generar_grafica("triple", str(expr), limites)
         except Exception as e:
             print("Error al graficar triple:", e)
             grafica = ""
-        return {"valor": valor, "grafica": grafica}
+        if isinstance(grafica, str) and (grafica.endswith(".png") or grafica.startswith("http")):
+            grafica_out = grafica
+        else:
+            grafica_out = None
+        return {"valor": valor, "grafica": grafica_out}
     except Exception as e:
         print("Error inesperado en el endpoint triple:", e)
         return JSONResponse(status_code=400, content={"detail": f"Error inesperado: {e}"})
