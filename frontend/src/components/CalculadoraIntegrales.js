@@ -150,20 +150,21 @@ export default function CalculadoraIntegrales() {
     const zInfProc = preprocesarExpresion(zInf);
     const zSupProc = preprocesarExpresion(zSup);
 
+    // --- FIX: No uses parseFloat, manda los límites como string ---
     if (tipo === "Simple") {
       endpoint = "/simple";
       data = {
         expresion: expProc,
-        limite_inf: parseFloat(limiteInf),
-        limite_sup: parseFloat(limiteSup),
+        limite_inf: limiteInf, // string, permite "pi", "e", etc.
+        limite_sup: limiteSup,
         modo_interactivo: modoInteractivo,
       };
     } else if (tipo === "Doble") {
       endpoint = "/doble";
       data = {
         expresion: expProc,
-        x_inf: parseFloat(limiteInf),
-        x_sup: parseFloat(limiteSup),
+        x_inf: limiteInf,
+        x_sup: limiteSup,
         y_inf: yInfProc,
         y_sup: ySupProc,
         modo_interactivo: modoInteractivo,
@@ -172,8 +173,8 @@ export default function CalculadoraIntegrales() {
       endpoint = "/triple";
       data = {
         expresion: expProc,
-        x_inf: parseFloat(limiteInf),
-        x_sup: parseFloat(limiteSup),
+        x_inf: limiteInf,
+        x_sup: limiteSup,
         y_inf: yInfProc,
         y_sup: ySupProc,
         z_inf: zInfProc,
@@ -190,9 +191,9 @@ export default function CalculadoraIntegrales() {
       if (
         err.response &&
         err.response.data &&
-        err.response.data.detail
+        (err.response.data.error || err.response.data.detail)
       ) {
-        setError(err.response.data.detail);
+        setError(err.response.data.error || err.response.data.detail);
       } else {
         setError("Error inesperado. Intenta nuevamente.");
       }
