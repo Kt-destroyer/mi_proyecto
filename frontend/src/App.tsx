@@ -222,22 +222,22 @@ export default function App() {
       if (tipo === "simple") {
         res = await axios.post(`${BACKEND_URL}/simple`, {
           expresion,
-          limite_inf: parseFloat(limiteInf),
-          limite_sup: parseFloat(limiteSup),
+          limite_inf: limiteInf,
+          limite_sup: limiteSup,
         });
       } else if (tipo === "doble") {
         res = await axios.post(`${BACKEND_URL}/doble`, {
           expresion,
-          x_inf: parseFloat(xInf),
-          x_sup: parseFloat(xSup),
+          x_inf: xInf,
+          x_sup: xSup,
           y_inf: yInf,
           y_sup: ySup,
         });
       } else if (tipo === "triple") {
         res = await axios.post(`${BACKEND_URL}/triple`, {
           expresion,
-          x_inf: parseFloat(txInf),
-          x_sup: parseFloat(txSup),
+          x_inf: txInf,
+          x_sup: txSup,
           y_inf: tyInf,
           y_sup: tySup,
           z_inf: tzInf,
@@ -346,22 +346,22 @@ export default function App() {
                   <div className="row">
                     <div className="col">
                       <TextField
-                        label="Límite inferior"
+                        label="Límite inferior (número o expresión, ej: 0, pi, 2*pi, e)"
                         fullWidth
                         required
                         value={limiteInf}
                         onChange={e => setLimiteInf(e.target.value)}
-                        type="number"
+                        type="text"
                       />
                     </div>
                     <div className="col">
                       <TextField
-                        label="Límite superior"
+                        label="Límite superior (número o expresión, ej: 1, pi, 2*pi, e)"
                         fullWidth
                         required
                         value={limiteSup}
                         onChange={e => setLimiteSup(e.target.value)}
-                        type="number"
+                        type="text"
                       />
                     </div>
                   </div>
@@ -372,22 +372,22 @@ export default function App() {
                     <div className="row">
                       <div className="col">
                         <TextField
-                          label="x inferior"
+                          label="x inferior (número o expresión, ej: 0, pi, 2*pi, e)"
                           fullWidth
                           required
                           value={xInf}
                           onChange={e => setXInf(e.target.value)}
-                          type="number"
+                          type="text"
                         />
                       </div>
                       <div className="col">
                         <TextField
-                          label="x superior"
+                          label="x superior (número o expresión, ej: 1, pi, 2*pi, e)"
                           fullWidth
                           required
                           value={xSup}
                           onChange={e => setXSup(e.target.value)}
-                          type="number"
+                          type="text"
                         />
                       </div>
                     </div>
@@ -421,22 +421,22 @@ export default function App() {
                     <div className="row">
                       <div className="col">
                         <TextField
-                          label="x inferior"
+                          label="x inferior (número o expresión, ej: 0, pi, 2*pi, e)"
                           fullWidth
                           required
                           value={txInf}
                           onChange={e => setTxInf(e.target.value)}
-                          type="number"
+                          type="text"
                         />
                       </div>
                       <div className="col">
                         <TextField
-                          label="x superior"
+                          label="x superior (número o expresión, ej: 1, pi, 2*pi, e)"
                           fullWidth
                           required
                           value={txSup}
                           onChange={e => setTxSup(e.target.value)}
-                          type="number"
+                          type="text"
                         />
                       </div>
                     </div>
@@ -530,7 +530,7 @@ export default function App() {
                   : tipo === "doble"
                   ? `x: [${xInf}, ${xSup}], y: [${yInf}, ${ySup}]`
                   : `x: [${txInf}, ${txSup}], y: [${tyInf}, ${tySup}], z: [${tzInf}, ${tzSup}]`}
-                  <span style={{ fontWeight: 600 }}>es:</span>
+                  <span style={{ fontWeight: 600 }}> es:</span>
               </Typography>
               <Typography variant="h4" sx={{ color: "#198754", fontFamily: "'Montserrat',sans-serif" }}>
                 <b>{resultado}</b>

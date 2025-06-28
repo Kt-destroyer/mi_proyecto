@@ -14,6 +14,14 @@ sympy_func_dict = {
     "pi": sympy.pi, "e": sympy.E,
 }
 
+def parse_limit_string(val):
+    # Convierte un string como "pi", "2*pi", "e", "3.5", etc. a float usando sympy
+    try:
+        expr = sympy.sympify(val, locals=sympy_func_dict)
+        return float(expr.evalf())
+    except Exception:
+        raise ValueError(f"Límite inválido: {val}")
+
 def _asegura_escalar(expr):
     if hasattr(expr, 'is_Matrix') and expr.is_Matrix:
         expr = expr.tolist()
@@ -34,27 +42,6 @@ def _valida_arreglo_json(vals):
     arr = np.asarray(vals)
     return np.all(np.isfinite(arr))
 
-def _get_float_limit(val, x=None, y=None):
-    # Si es float/int, retorna directo
-    if isinstance(val, (float, int)):
-        return float(val)
-    # Si es string que representa número
-    try:
-        return float(val)
-    except Exception:
-        pass
-    # Si es función/lambda sympy
-    try:
-        if callable(val):
-            # Si espera x, o x, y
-            if x is not None and y is None:
-                return float(val(x))
-            elif x is not None and y is not None:
-                return float(val(x, y))
-    except Exception:
-        pass
-    return None # fallback
-
 def _parse_limit_func(expr, vars_):
     # Devuelve una función de las variables vars_ a partir de una expresión string o numérica
     if isinstance(expr, (float, int)):
@@ -63,9 +50,9 @@ def _parse_limit_func(expr, vars_):
         try:
             return sp.lambdify(vars_, parse_expr(expr, local_dict=sympy_func_dict), modules="numpy")
         except Exception:
-            # Si no es función, intenta forzar a float
+            # Si no es función, intenta forzar a float interpretando como expresión sympy
             try:
-                return lambda *args: float(expr)
+                return lambda *args: float(sympy.sympify(expr, locals=sympy_func_dict).evalf())
             except Exception:
                 raise
     elif callable(expr):
@@ -89,7 +76,7 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
             expr = sp.sympify(expresion, locals=sympy_func_dict)
             expr = _asegura_escalar(expr)
             f = sp.lambdify(x, expr, modules="numpy")
-            x_vals = np.linspace(limites["a"], limites["b"], 500)
+            x_vals = np.linspace(parse_limit_string(limites["a"]), parse_limit_string(limites["b"]), 500)
             y_vals = f(x_vals)
             if not _valida_arreglo_json(y_vals):
                 raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
@@ -113,8 +100,8 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
             expr = sp.sympify(expresion, locals=sympy_func_dict)
             expr = _asegura_escalar(expr)
             fxy = sp.lambdify((x, y), expr, modules="numpy")
-            x_inf = _get_float_limit(limites["a"])
-            x_sup = _get_float_limit(limites["b"])
+            x_inf = parse_limit_string(limites["a"])
+            x_sup = parse_limit_string(limites["b"])
             y_inf_func = _parse_limit_func(limites["c"], [x])
             y_sup_func = _parse_limit_func(limites["d"], [x])
 
@@ -136,8 +123,9 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
                     print("Error en Z[:, ix] = fxy(xv, Y[:, ix])", e)
                     Z[:, ix] = np.nan
 
-            if not _valida_arreglo_json(Z):
-                raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia el intervalo.")
+            # Solo aborta si TODOS los valores son NaN o infinitos, no si hay algunos NaN
+            if not np.any(np.isfinite(Z)):
+                raise ValueError("No hay datos válidos para graficar (todos los valores son NaN o infinitos). Cambia el intervalo.")
 
             import matplotlib
             matplotlib.use('Agg')
@@ -160,8 +148,8 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
             expr = _asegura_escalar(expr)
             fxyz = sp.lambdify((x, y, z), expr, modules="numpy")
 
-            x_inf = _get_float_limit(limites["a"])
-            x_sup = _get_float_limit(limites["b"])
+            x_inf = parse_limit_string(limites["a"])
+            x_sup = parse_limit_string(limites["b"])
             y_inf_func = _parse_limit_func(limites["c"], [x])
             y_sup_func = _parse_limit_func(limites["d"], [x])
             z_inf_func = _parse_limit_func(limites["e"], [x, y])
@@ -193,8 +181,8 @@ def generar_grafica(tipo: str, expresion: str, limites: dict, modo_interactivo: 
                         print("Error en S[iy, ix] = np.nansum(vals):", e)
                         S[iy, ix] = np.nan
 
-            if not _valida_arreglo_json(S):
-                raise ValueError("La función tiene valores infinitos o indefinidos en el rango seleccionado. Cambia los límites o la función.")
+            if not np.any(np.isfinite(S)):
+                raise ValueError("No hay datos válidos para graficar (todos los valores son NaN o infinitos). Cambia los límites o la función.")
 
             import matplotlib
             matplotlib.use('Agg')

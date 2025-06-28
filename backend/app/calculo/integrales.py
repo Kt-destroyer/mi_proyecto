@@ -12,8 +12,16 @@ sympy_func_dict = {
     "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
     "log": sp.log, "exp": sp.exp, "sqrt": sp.sqrt,
     "sec": sp.sec, "csc": sp.csc, "cot": sp.cot,
-    "Abs": sp.Abs, "abs": sp.Abs, "pi": sp.pi
+    "Abs": sp.Abs, "abs": sp.Abs, "pi": sp.pi, "e": sp.E
 }
+
+def parse_limit_string(val):
+    # Convierte un string como "pi", "2*pi", "e", "3.5", etc. a float usando sympy
+    try:
+        expr = sp.sympify(val, locals=sympy_func_dict)
+        return float(expr.evalf())
+    except Exception:
+        raise ValueError(f"Límite inválido: {val}")
 
 def preprocess_math_expr(expr_str):
     """
@@ -43,7 +51,14 @@ def get_limit_func(expr, args):
         expr = re.sub(r'([a-zA-Z])(\d)', r'\1*\2', expr)
         expr = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', expr)
         expr = preprocess_math_expr(expr)
-        return sp.lambdify(args, parse_math_expr(expr), modules=["numpy"])
+        try:
+            return sp.lambdify(args, parse_math_expr(expr), modules=["numpy"])
+        except Exception:
+            # Si no es función, intenta forzar a float interpretando como expresión sympy
+            try:
+                return lambda *a: float(sp.sympify(expr, locals=sympy_func_dict).evalf())
+            except Exception:
+                raise
     elif callable(expr):
         return expr
     else:
@@ -208,14 +223,14 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
         expr = parse_math_expr(expresion) if expresion else None
 
         if tipo == "simple":
-            a, b = float(limites["a"]), float(limites["b"])
+            a, b = parse_limit_string(limites["a"]), parse_limit_string(limites["b"])
             if detectar_discontinuidad(expr, a, b):
                 return {"error": "La función tiene discontinuidades en el intervalo de integración. El resultado puede ser indefinido o incorrecto."}
             f = sp.lambdify(x, expr, modules=["numpy"])
             resultado = simpson_simple(f, a, b, n=10000)
 
         elif tipo == "doble":
-            a, b = float(limites["a"]), float(limites["b"])
+            a, b = parse_limit_string(limites["a"]), parse_limit_string(limites["b"])
             f = sp.lambdify((x, y), expr, modules=["numpy"])
             y_inf_func = get_limit_func(limites["c"], (x,))
             y_sup_func = get_limit_func(limites["d"], (x,))
@@ -224,7 +239,7 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             )
 
         elif tipo == "triple":
-            a, b = float(limites["a"]), float(limites["b"])
+            a, b = parse_limit_string(limites["a"]), parse_limit_string(limites["b"])
             f = sp.lambdify((x, y, z), expr, modules=["numpy"])
             y_inf_func = get_limit_func(limites["c"], (x,))
             y_sup_func = get_limit_func(limites["d"], (x,))
