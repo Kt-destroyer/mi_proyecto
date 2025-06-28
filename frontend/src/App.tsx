@@ -470,7 +470,7 @@ export default function App() {
                           required
                           value={tzInf}
                           onChange={e => setTzInf(e.target.value)}
-                          placeholder="ej: 0 o x+y"
+                          placeholder="ej: 0, x o y"
                         />
                       </div>
                       <div className="col">
@@ -530,6 +530,7 @@ export default function App() {
                   : tipo === "doble"
                   ? `x: [${xInf}, ${xSup}], y: [${yInf}, ${ySup}]`
                   : `x: [${txInf}, ${txSup}], y: [${tyInf}, ${tySup}], z: [${tzInf}, ${tzSup}]`}
+                  <span style={{ fontWeight: 600 }}>es:</span>
               </Typography>
               <Typography variant="h4" sx={{ color: "#198754", fontFamily: "'Montserrat',sans-serif" }}>
                 <b>{resultado}</b>
