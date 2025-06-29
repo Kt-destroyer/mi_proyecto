@@ -5,9 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from app.calculo.integrales import calcular_integral
+from app.calculo.integrales import calcular_integral, parse_limit_string
 from app.calculo.graficas import generar_grafica
-from app.utils.math_parser import validar_expr_con_variables, parse_math_expr
+from app.utils.math_parser import validar_expr_con_variables, parse_math_expr, preprocess_math_expr
 
 app = FastAPI()
 
@@ -24,20 +24,20 @@ if not os.path.exists("static"):
 
 class SimpleIntegralRequest(BaseModel):
     expresion: str
-    limite_inf: float
-    limite_sup: float
+    limite_inf: str
+    limite_sup: str
 
 class DobleIntegralRequest(BaseModel):
     expresion: str
-    x_inf: float
-    x_sup: float
+    x_inf: str
+    x_sup: str
     y_inf: str
     y_sup: str
 
 class TripleIntegralRequest(BaseModel):
     expresion: str
-    x_inf: float
-    x_sup: float
+    x_inf: str
+    x_sup: str
     y_inf: str
     y_sup: str
     z_inf: str
@@ -48,19 +48,22 @@ def parse_limite(valor):
     try:
         return float(valor)
     except Exception:
+        # Preprocesa cualquier string de función antes de parsear
         return str(parse_math_expr(valor))
-
 
 @app.post("/simple")
 def integral_simple(req: SimpleIntegralRequest):
     try:
-        if req.limite_inf == req.limite_sup:
+        a = parse_limit_string(req.limite_inf)
+        b = parse_limit_string(req.limite_sup)
+        if a == b:
             return JSONResponse(status_code=400, content={"detail": "Los límites superior e inferior de integración son iguales."})
-        if req.limite_inf > req.limite_sup:
+        if a > b:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior es mayor que el superior. Por favor invierte los límites."})
 
         try:
-            expr = validar_expr_con_variables(req.expresion, {"x"})
+            # Preprocesamiento explícito aquí también
+            expr = validar_expr_con_variables(preprocess_math_expr(req.expresion), {"x"})
         except Exception as e:
             return JSONResponse(status_code=400, content={"detail": f"Error en la expresión ingresada. Revisa paréntesis y sintaxis. Detalle: {e}"})
 
@@ -78,12 +81,14 @@ def integral_simple(req: SimpleIntegralRequest):
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
         try:
-            # Siempre genera gráfica estática (matplotlib)
-            grafica = generar_grafica("simple", str(expr), limites)
+            limites_grafica = {
+                "a": float(a),
+                "b": float(b)
+            }
+            grafica = generar_grafica("simple", str(expr), limites_grafica)
         except Exception as e:
             print("Error al graficar:", e)
             grafica = ""
-        # Solo acepta imágenes PNG como respuesta
         if isinstance(grafica, str) and (grafica.endswith(".png") or grafica.startswith("http")):
             grafica_out = grafica
         else:
@@ -96,13 +101,15 @@ def integral_simple(req: SimpleIntegralRequest):
 @app.post("/doble")
 def integral_doble(req: DobleIntegralRequest):
     try:
-        if req.x_inf == req.x_sup:
+        a = parse_limit_string(req.x_inf)
+        b = parse_limit_string(req.x_sup)
+        if a == b:
             return JSONResponse(status_code=400, content={"detail": "Los límites superior e inferior de integración para x son iguales."})
-        if req.x_inf > req.x_sup:
+        if a > b:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior de x es mayor que el superior. Por favor invierte los límites."})
 
         try:
-            expr = validar_expr_con_variables(req.expresion, {"x", "y"})
+            expr = validar_expr_con_variables(preprocess_math_expr(req.expresion), {"x", "y"})
             y_inf_expr = parse_limite(req.y_inf)
             y_sup_expr = parse_limite(req.y_sup)
         except Exception as e:
@@ -124,7 +131,13 @@ def integral_doble(req: DobleIntegralRequest):
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
         try:
-            grafica = generar_grafica("doble", str(expr), limites)
+            limites_grafica = {
+                "a": float(a),
+                "b": float(b),
+                "c": y_inf_expr,
+                "d": y_sup_expr
+            }
+            grafica = generar_grafica("doble", str(expr), limites_grafica)
         except Exception as e:
             print("Error al graficar doble:", e)
             grafica = ""
@@ -140,13 +153,15 @@ def integral_doble(req: DobleIntegralRequest):
 @app.post("/triple")
 def integral_triple(req: TripleIntegralRequest):
     try:
-        if req.x_inf == req.x_sup:
+        a = parse_limit_string(req.x_inf)
+        b = parse_limit_string(req.x_sup)
+        if a == b:
             return JSONResponse(status_code=400, content={"detail": "Los límites superior e inferior de integración para x son iguales."})
-        if req.x_inf > req.x_sup:
+        if a > b:
             return JSONResponse(status_code=400, content={"detail": "El límite inferior de x es mayor que el superior. Por favor invierte los límites."})
 
         try:
-            expr = validar_expr_con_variables(req.expresion, {"x", "y", "z"})
+            expr = validar_expr_con_variables(preprocess_math_expr(req.expresion), {"x", "y", "z"})
             y_inf_expr = parse_limite(req.y_inf)
             y_sup_expr = parse_limite(req.y_sup)
             z_inf_expr = parse_limite(req.z_inf)
@@ -172,7 +187,15 @@ def integral_triple(req: TripleIntegralRequest):
                 "detail": "El resultado de la integral es infinito o indefinido. Cambia los límites o la función."
             })
         try:
-            grafica = generar_grafica("triple", str(expr), limites)
+            limites_grafica = {
+                "a": float(a),
+                "b": float(b),
+                "c": y_inf_expr,
+                "d": y_sup_expr,
+                "e": z_inf_expr,
+                "f": z_sup_expr
+            }
+            grafica = generar_grafica("triple", str(expr), limites_grafica)
         except Exception as e:
             print("Error al graficar triple:", e)
             grafica = ""

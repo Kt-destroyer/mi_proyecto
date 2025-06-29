@@ -40,13 +40,44 @@ function ManualDeUso() {
     <div>
       <h3>Manual de uso</h3>
       <ul>
-        <li><b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x, y</b> para dobles, y <b>x, y, z</b> para triples.</li>
-        <li><b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>abs</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.</li>
-        <li><b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.</li>
-        <li><b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, sqrt(x)]</code> o <code>z: [x+y, x+y+1]</code>.</li>
-        <li><b>Dominio válido:</b> Asegúrate que el límite superior sea mayor que el inferior para todo el rango.</li>
-        <li><b>Errores comunes:</b> Si ves resultados 0 o infinitos, revisa la sintaxis y los dominios.</li>
-        <li><b>Visualización:</b> Puedes alternar entre gráfica interactiva (Plotly) y estática (PNG).</li>
+        <li>
+          <b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x, y</b> para dobles, y <b>x, y, z</b> para triples.
+        </li>
+        <li>
+          <b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>abs</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.
+        </li>
+        <li>
+          <b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.
+        </li>
+        <li>
+          <b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, sqrt(x)]</code> o <code>z: [x+y, x+y+1]</code>.
+        </li>
+        <li>
+          <b>Dominio válido:</b> Asegúrate que el límite superior sea mayor que el inferior para todo el rango.
+        </li>
+        <li>
+          <b>Errores comunes:</b> Si ves resultados 0 o infinitos, revisa la sintaxis y los dominios, evita cosas como:
+          <ul>
+            <li>
+              Si la función tiene discontinuidades (por ejemplo, <code>sec(x)</code>, <code>tan(x)</code>, <code>1/(x-a)</code> en el intervalo), puede aparecer: <i>"La función tiene discontinuidades en el intervalo de integración. El resultado puede ser indefinido o incorrecto."</i>
+            </li>
+            <li>
+              Si usas variables no permitidas, verás: <i>"Variables no permitidas: ..."</i>
+            </li>
+            <li>
+              Si la expresión tiene error de sintaxis, verás: <i>"Error en la expresión ingresada. Revisa paréntesis y sintaxis."</i>
+            </li>
+            <li>
+              Si el dominio de la función es inválido en el intervalo (por ejemplo, raíz de negativo, logaritmo de cero/negativo), verás: <i>"El resultado de la integral es infinito o indefinido. Cambia los límites o la función."</i>
+            </li>
+            <li>
+              Si los límites son iguales o están invertidos, recibirás mensajes específicos para corregirlos.
+            </li>
+          </ul>
+        </li>
+        
+         
+        
       </ul>
       <h4>Ejemplos de expresiones y límites:</h4>
       <table className="ejemplos-tabla">
@@ -191,12 +222,25 @@ export default function App() {
   }
 
   function traducirErrorBackend(msg: string): string {
+    if (msg.toLowerCase().includes("discontinuidad") || msg.toLowerCase().includes("discontinuities")) {
+      return "La función tiene discontinuidades en el intervalo de integración. El resultado puede ser indefinido o incorrecto.";
+    }
     if (msg.includes("mayor que el superior")) return "El límite inferior es mayor que el superior. Por favor invierte los límites.";
     if (msg.includes("son iguales")) return "Los límites superior e inferior de integración son iguales.";
     if (msg.includes("Error en la expresión")) return "Error en la expresión ingresada. Revisa paréntesis y sintaxis.";
     if (msg.includes("No se pudo graficar")) return "Ocurrió un problema al graficar la región de integración.";
-    if (msg.includes("cannot convert expression to float") || msg.includes("Cannot convert expression to float"))
+    if (
+      msg.includes("cannot convert expression to float") ||
+      msg.includes("Cannot convert expression to float")
+    )
       return "Uno de los límites o la expresión no es válida. Revisa que los límites sean números o funciones válidas de la variable correspondiente.";
+    if (msg.toLowerCase().includes("infinito") || msg.toLowerCase().includes("indefinido")) {
+      return "El resultado de la integral es infinito o indefinido. Cambia los límites o la función.";
+    }
+    if (msg.toLowerCase().includes("variables no permitidas")) {
+      return msg;
+    }
+    // Muestra el mensaje real del backend si no hay coincidencia específica
     return msg;
   }
 

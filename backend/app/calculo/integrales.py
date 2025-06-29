@@ -15,23 +15,31 @@ sympy_func_dict = {
     "Abs": sp.Abs, "abs": sp.Abs, "pi": sp.pi, "e": sp.E
 }
 
-def parse_limit_string(val):
-    # Convierte un string como "pi", "2*pi", "e", "3.5", etc. a float usando sympy
-    try:
-        expr = sp.sympify(val, locals=sympy_func_dict)
-        return float(expr.evalf())
-    except Exception:
-        raise ValueError(f"Límite inválido: {val}")
-
 def preprocess_math_expr(expr_str):
     """
     Preprocesa la expresión matemática:
     - Reemplaza abs( por Abs(
     - Soporta 'π' como 'pi'
+    - Soporta PI/E en cualquier capitalización
+    - Inserta * entre número y pi o e, por ejemplo 2pi -> 2*pi
     """
     expr_str = re.sub(r'\babs\s*\(', 'Abs(', expr_str)
     expr_str = expr_str.replace('π', 'pi')
+    expr_str = re.sub(r'\bPI\b', 'pi', expr_str, flags=re.IGNORECASE)
+    expr_str = re.sub(r'\bE\b', 'e', expr_str, flags=re.IGNORECASE)
+    # Inserta un * entre número y pi o e (por ejemplo 2pi -> 2*pi, 3e -> 3*e)
+    expr_str = re.sub(r'(\d)(pi|e)\b', r'\1*\2', expr_str)
     return expr_str
+
+def parse_limit_string(val):
+    # Convierte un string como "pi", "2*pi", "e", "3.5", etc. a float usando sympy
+    try:
+        val_proc = preprocess_math_expr(str(val))
+        expr = sp.sympify(val_proc, locals=sympy_func_dict)
+        return float(expr.evalf())
+    except Exception as ex:
+        print(f"Error en parse_limit_string para val={val}: {ex}")
+        raise ValueError(f"Límite inválido: {val}")
 
 def parse_math_expr(expr_str):
     if expr_str is None or expr_str == "":
@@ -220,17 +228,27 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
     resultado = None
 
     try:
+        print("==== DATOS RECIBIDOS ====")
+        print("tipo:", tipo)
+        print("expresion:", expresion)
+        print("limites:", limites)
+
         expr = parse_math_expr(expresion) if expresion else None
 
         if tipo == "simple":
-            a, b = parse_limit_string(limites["a"]), parse_limit_string(limites["b"])
+            a = parse_limit_string(limites["a"])
+            b = parse_limit_string(limites["b"])
+            print("Límite inferior procesado:", a)
+            print("Límite superior procesado:", b)
             if detectar_discontinuidad(expr, a, b):
                 return {"error": "La función tiene discontinuidades en el intervalo de integración. El resultado puede ser indefinido o incorrecto."}
             f = sp.lambdify(x, expr, modules=["numpy"])
             resultado = simpson_simple(f, a, b, n=10000)
 
         elif tipo == "doble":
-            a, b = parse_limit_string(limites["a"]), parse_limit_string(limites["b"])
+            a = parse_limit_string(limites["a"])
+            b = parse_limit_string(limites["b"])
+            print("Límites X procesados:", a, b)
             f = sp.lambdify((x, y), expr, modules=["numpy"])
             y_inf_func = get_limit_func(limites["c"], (x,))
             y_sup_func = get_limit_func(limites["d"], (x,))
@@ -239,7 +257,9 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
             )
 
         elif tipo == "triple":
-            a, b = parse_limit_string(limites["a"]), parse_limit_string(limites["b"])
+            a = parse_limit_string(limites["a"])
+            b = parse_limit_string(limites["b"])
+            print("Límites X procesados:", a, b)
             f = sp.lambdify((x, y, z), expr, modules=["numpy"])
             y_inf_func = get_limit_func(limites["c"], (x,))
             y_sup_func = get_limit_func(limites["d"], (x,))
@@ -258,5 +278,7 @@ def calcular_integral(tipo: str, expresion: str, limites: dict):
         }
 
     except Exception as e:
-        print(f"Error al calcular integral: {str(e)}")
+        import traceback
+        print("==== ERROR INTERNO AL CALCULAR LA INTEGRAL ====")
+        traceback.print_exc()
         return {"error": f"Error interno al calcular la integral: {str(e)}"}
