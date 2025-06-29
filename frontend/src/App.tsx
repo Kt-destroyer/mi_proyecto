@@ -47,7 +47,7 @@ function ManualDeUso() {
           <b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>abs</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.
         </li>
         <li>
-          <b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.
+          <b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code> y el sistema los corrige automáticamente.
         </li>
         <li>
           <b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, sqrt(x)]</code> o <code>z: [x+y, x+y+1]</code>.
