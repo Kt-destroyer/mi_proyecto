@@ -6,11 +6,11 @@ import { backendUrl } from "../config";
 // --- AUXILIAR: Preprocesador de expresiones matemáticas ---
 function preprocesarExpresion(expr) {
   let r = expr;
-  // Implicit multiplication: 2x -> 2*x, xsin(x) -> x*sin(x)
+ 
   r = r.replace(/(\d)([a-zA-Z])/g, '$1*$2');
   r = r.replace(/([a-zA-Z])(\d)/g, '$1*$2');
   // sin x -> sin(x)
-  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)'); // already fine
+  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)'); 
   r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s+([a-zA-Z0-9]+)/g, '$1($2)');
   // ^ to **
   r = r.replace(/(\w+)\s*\^\s*(\w+)/g, '$1**$2');
@@ -66,6 +66,18 @@ function ManualDeUso() {
     <div>
       <h3>Manual de uso y ejemplos</h3>
       <ul style={{ marginBottom: 20 }}>
+        <li>
+          <b>Para que sirve cada integral:</b> 
+        </li>
+        <li>
+          <b>Simple:</b> Área bajo la curva en un intervalo.
+        </li>
+        <li>
+          <b>Doble:</b> Área de una región plana definida por límites numéricos o funcionales.
+        </li>
+        <li>
+          <b>Triple:</b> Volumen dentro de una región cúbica o definida por funciones.
+        </li>
         <li>
           <b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x</b> y <b>y</b> para dobles, y <b>x, y, z</b> para triples.
         </li>
