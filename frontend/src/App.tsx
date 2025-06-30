@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 import Plot from "react-plotly.js";
 
-// Google Fonts import for Montserrat and Roboto Slab
 const fontLink = document.createElement("link");
 fontLink.href = "https://fonts.googleapis.com/css?family=Montserrat:400,700|Roboto+Slab:400,700&display=swap";
 fontLink.rel = "stylesheet";
@@ -38,7 +37,13 @@ function tieneFuncionesSinParentesis(expr: string) {
 function ManualDeUso() {
   return (
     <div>
-      <h3>Manual de uso</h3>
+      <b>¿Para qué sirve cada tipo de integral?</b>
+      <ul style={{ marginTop: 6, marginBottom: 0 }}>
+        <li><b>Simple:</b> Área bajo la curva en un intervalo.</li>
+        <li><b>Doble:</b> Área de una región plana definida por límites numéricos o funcionales.</li>
+        <li><b>Triple:</b> Volumen dentro de una región cúbica o definida por funciones.</li>
+      </ul>
+      <h3>Manual de uso:</h3>
       <ul>
         <li>
           <b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x, y</b> para dobles, y <b>x, y, z</b> para triples.
@@ -75,9 +80,6 @@ function ManualDeUso() {
             </li>
           </ul>
         </li>
-        
-         
-        
       </ul>
       <h4>Ejemplos de expresiones y límites:</h4>
       <table className="ejemplos-tabla">
