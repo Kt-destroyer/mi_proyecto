@@ -6,11 +6,11 @@ import { backendUrl } from "../config";
 // --- AUXILIAR: Preprocesador de expresiones matemáticas ---
 function preprocesarExpresion(expr) {
   let r = expr;
- 
+
   r = r.replace(/(\d)([a-zA-Z])/g, '$1*$2');
   r = r.replace(/([a-zA-Z])(\d)/g, '$1*$2');
   // sin x -> sin(x)
-  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)'); 
+  r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s*\(\s*([^)]+)\s*\)/g, '$1($2)');
   r = r.replace(/(sin|cos|tan|exp|log|sqrt|sec|csc|cot)\s+([a-zA-Z0-9]+)/g, '$1($2)');
   // ^ to **
   r = r.replace(/(\w+)\s*\^\s*(\w+)/g, '$1**$2');
@@ -61,47 +61,92 @@ const ejemplos = [
   },
 ];
 
-function ManualDeUso() {
+function TablaCalculadora() {
   return (
-    <div>
-      <h3>Manual de uso y ejemplos</h3>
-      <ul style={{ marginBottom: 20 }}>
-        <li>
-          <b>Para que sirve cada integral:</b> 
-        </li>
-        <li>
-          <b>Simple:</b> Área bajo la curva en un intervalo.
-        </li>
-        <li>
-          <b>Doble:</b> Área de una región plana definida por límites numéricos o funcionales.
-        </li>
-        <li>
-          <b>Triple:</b> Volumen dentro de una región cúbica o definida por funciones.
-        </li>
-        <li>
-          <b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x</b> y <b>y</b> para dobles, y <b>x, y, z</b> para triples.
-        </li>
-        <li>
-          <b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.
-        </li>
-        <li>
-          <b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.
-        </li>
-        <li>
-          <b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, x+2]</code> o <code>z: [x+y, x+y+1]</code>.
-        </li>
-        <li>
-          <b>Dominio válido:</b> Asegúrate que el límite superior sea mayor que el inferior para todo el rango.
-        </li>
-        <li>
-          <b>Errores comunes:</b> Si ves resultados 0 o infinitos, revisa la sintaxis y los dominios.
-        </li>
-        <li>
-          <b>Visualización:</b> Puedes alternar entre gráfica interactiva (Plotly) y estática (PNG) usando el switch de visualización.
-        </li>
-      </ul>
-      <h4>Ejemplos de expresiones y límites:</h4>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.97em" }}>
+    <table style={{
+      width: "100%",
+      borderCollapse: "collapse",
+      marginBottom: 16,
+      background: "#fff",
+      borderRadius: 8,
+      boxShadow: "0 0 5px #eee",
+      fontSize: "1em"
+    }}>
+      <thead>
+        <tr style={{ borderBottom: "1px solid #888" }}>
+          <th colSpan={2} style={{textAlign: "center", fontWeight: 700, padding: 7, background: "#f3f3f3" }}>¿Para qué sirve cada tipo de integral?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style={{ fontWeight: "bold", width: 90, padding: 6 }}>Simple</td>
+          <td style={{ padding: 6 }}>Área bajo la curva en un intervalo.</td>
+        </tr>
+        <tr>
+          <td style={{ fontWeight: "bold", padding: 6 }}>Doble</td>
+          <td style={{ padding: 6 }}>Área de una región plana definida por límites numéricos o funcionales.</td>
+        </tr>
+        <tr>
+          <td style={{ fontWeight: "bold", padding: 6 }}>Triple</td>
+          <td style={{ padding: 6 }}>Volumen dentro de una región cúbica o definida por funciones.</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+function TablaManual() {
+  return (
+    <table style={{
+      width: "100%",
+      borderCollapse: "collapse",
+      marginBottom: 16,
+      background: "#fff",
+      borderRadius: 8,
+      boxShadow: "0 0 5px #eee",
+      fontSize: "0.97em"
+    }}>
+      <thead>
+        <tr style={{ borderBottom: "1px solid #888" }}>
+          <th style={{textAlign: "left", fontWeight: 700, padding: 7, background: "#f3f3f3" }}>Manual de uso</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style={{padding: 6}}><b>Variables permitidas:</b> Usa <b>x</b> para integrales simples, <b>x</b> y <b>y</b> para dobles, y <b>x, y, z</b> para triples.</td></tr>
+        <tr><td style={{padding: 6}}><b>Funciones permitidas:</b> <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>.</td></tr>
+        <tr><td style={{padding: 6}}><b>Notación natural:</b> Puedes escribir <code>2x</code>, <code>x^2</code>, <code>sin x</code> y el sistema los corrige automáticamente.</td></tr>
+        <tr><td style={{padding: 6}}><b>Límites funcionales:</b> Para límites internos dependientes, escribe por ejemplo <code>y: [x, x+2]</code> o <code>z: [x+y, x+y+1]</code>.</td></tr>
+        <tr><td style={{padding: 6}}><b>Dominio válido:</b> Asegúrate que el límite superior sea mayor que el inferior para todo el rango.</td></tr>
+        <tr>
+          <td style={{padding: 6}}>
+            <b>Errores comunes:</b>
+            <ul style={{margin: "8px 0 4px 20px", padding: 0}}>
+              <li>Si ves resultados 0 o infinitos, revisa la sintaxis y los dominios.</li>
+              <li>Si la función tiene discontinuidades (por ejemplo, sec(x), tan(x), 1/(x-a)), puede aparecer: <i>La función tiene discontinuidades en el intervalo de integración. El resultado puede ser indefinido o incorrecto.</i></li>
+              <li>Si usas variables no permitidas, verás: <i>Variables no permitidas: ...</i></li>
+              <li>Si la expresión tiene error de sintaxis, verás: <i>Error en la expresión ingresada. Revisa paréntesis y sintaxis.</i></li>
+              <li>Si el dominio de la función es inválido en el intervalo (por ejemplo, raíz de negativo, logaritmo de cero/negativo), verás: <i>El resultado de la integral es infinito o indefinido. Cambia los límites o la función.</i></li>
+              <li>Si los límites son iguales o están invertidos, recibirás mensajes específicos para corregirlos.</li>
+            </ul>
+          </td>
+        </tr>
+        <tr><td style={{padding: 6}}><b>Visualización:</b> Puedes alternar entre gráfica interactiva (Plotly) y estática (PNG) usando el switch de visualización.</td></tr>
+      </tbody>
+    </table>
+  );
+}
+
+function TablaEjemplos() {
+  return (
+    <div style={{overflowX: "auto"}}>
+      <table style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        background: "#fff",
+        borderRadius: 8,
+        boxShadow: "0 0 5px #eee",
+        fontSize: "0.97em"
+      }}>
         <thead>
           <tr style={{ borderBottom: "1px solid #888" }}>
             <th>Tipo</th>
@@ -162,12 +207,11 @@ export default function CalculadoraIntegrales() {
     const zInfProc = preprocesarExpresion(zInf);
     const zSupProc = preprocesarExpresion(zSup);
 
-    // --- FIX: No uses parseFloat, manda los límites como string ---
     if (tipo === "Simple") {
       endpoint = "/simple";
       data = {
         expresion: expProc,
-        limite_inf: limiteInf, // string, permite "pi", "e", etc.
+        limite_inf: limiteInf,
         limite_sup: limiteSup,
         modo_interactivo: modoInteractivo,
       };
@@ -401,9 +445,13 @@ export default function CalculadoraIntegrales() {
         background: "#f7f7f7",
         borderRadius: 12,
         padding: 24,
-        boxShadow: "0 0 5px #ddd"
+        boxShadow: "0 0 5px #ddd",
+        maxHeight: "85vh",
+        overflowY: "auto"
       }}>
-        <ManualDeUso />
+        <TablaCalculadora />
+        <TablaManual />
+        <TablaEjemplos />
       </div>
     </div>
   );
